@@ -1,13 +1,14 @@
+.venv/
 __pycache__/
 *.pyc
-.venv/
 .env
-.idea/
 .vscode/
+.idea/
+# Thư mục build/tạm
 dist/
 build/
-*.sqlite3
-*.db
 .pytest_cache/
 .coverage
 htmlcov/
+*.sqlite3
+*.db

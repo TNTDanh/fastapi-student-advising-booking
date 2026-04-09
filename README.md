@@ -1,22 +1,9 @@
-# Student Advising Booking System
+﻿# Student Advising Booking System
 
-A FastAPI-based web application for student advising appointment booking and management.
+Mục tiêu: khởi tạo khung ứng dụng FastAPI cho hệ thống đặt lịch cố vấn sinh viên (chưa có cơ sở dữ liệu và logic nghiệp vụ).
 
-## Features
-- User registration and login
-- JWT authentication
-- Role-based access control
-- Service and timeslot management
-- Appointment booking workflow
-- Swagger UI API docs
-
-## Tech Stack
-- FastAPI
-- SQLAlchemy
-- SQLite / PostgreSQL
-- Jinja2
-- Docker
-
-## Run locally
-```bash
+## Cách chạy
+```
+pip install -r requirements.txt
 uvicorn app.main:app --reload
+```

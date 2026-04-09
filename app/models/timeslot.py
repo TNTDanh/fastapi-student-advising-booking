@@ -1,12 +1,3 @@
-from sqlalchemy import Column, Integer, String, Date, Time
-from app.db.session import Base
+"""Model khung gi? t? v?n s? ???c x?y d?ng sau."""
 
-class TimeSlot(Base):
-    __tablename__ = "timeslots"
-
-    id = Column(Integer, primary_key=True, index=True)
-    advisor_name = Column(String, nullable=False)
-    slot_date = Column(Date, nullable=False)
-    start_time = Column(Time, nullable=False)
-    end_time = Column(Time, nullable=False)
-    status = Column(String, default="available")
+# TODO: Tri?n khai sau

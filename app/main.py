@@ -1,19 +1,27 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.routers import web
-from app.db.session import Base, engine
-from app.db import base  # noqa
-from app.routers import web, auth
 
+from app.db.base import Base  # dang ky model
+from app.db.session import engine
+from app.routers import auth, users, web
 
+# Khoi tao ung dung FastAPI co ban
+app = FastAPI(title="Student Advising Booking System")
+
+# Tao bang tu dong cho giai doan hoc tap/phat trien (khong dung cho production)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Student Advising Booking System", version="1.0.0")
-
+# Phuc vu file tinh (CSS) de trang HTML hien thi dung
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-app.include_router(web.router)
-app.include_router(auth.router)
+
 
 @app.get("/health")
-def health_check():
+async def health_check():
+    """Kiem tra nhanh tinh trang dich vu."""
     return {"status": "ok"}
+
+
+# Gan router giao dien web va cac router API
+app.include_router(web.router)
+app.include_router(users.router)
+app.include_router(auth.router)

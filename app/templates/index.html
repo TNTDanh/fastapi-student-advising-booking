@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Student Advising Booking</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+﻿{% extends "base.html" %}
+{% block content %}
+<!-- Trang gioi thieu ngan gon -->
+<section class="hero">
     <h1>Student Advising Booking System</h1>
-    <p>FastAPI project is running successfully.</p>
-    <p><a href="/docs">Open API Docs</a></p>
-</body>
-</html>
+    <p>Khung ung dung dat lich co van sinh vien. Logic va co so du lieu se them sau.</p>
+    <a class="button" href="/docs">Xem tai lieu API (/docs)</a>
+</section>
+{% endblock %}
