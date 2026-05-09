@@ -31,3 +31,15 @@ class TimeSlotRead(BaseModel):
     status: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TimeSlotDisplayRead(BaseModel):
+    """Schema hien thi khung gio co ten co van."""
+
+    id: int
+    advisor_id: int
+    advisor_name: str
+    slot_date: date
+    start_time: time
+    end_time: time
+    status: str

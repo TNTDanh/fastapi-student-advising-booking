@@ -1,3 +1,5 @@
+from datetime import date, time
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -28,3 +30,23 @@ class AppointmentRead(BaseModel):
     cancelled_by: str | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AppointmentDisplayRead(BaseModel):
+    """Schema hien thi lich hen co ten sinh vien, dich vu va co van."""
+
+    id: int
+    student_id: int
+    student_name: str
+    service_id: int
+    service_name: str
+    timeslot_id: int
+    advisor_id: int
+    advisor_name: str
+    slot_date: date
+    start_time: time
+    end_time: time
+    note: str | None
+    status: str
+    cancel_note: str | None
+    cancelled_by: str | None

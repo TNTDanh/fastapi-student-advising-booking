@@ -101,6 +101,33 @@ function finishPageLoading(loadingId) {
     }
 }
 
+function clearMessage(targetId) {
+    const target = document.getElementById(targetId);
+    if (!target) {
+        return;
+    }
+    target.textContent = "";
+    target.className = "message";
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) {
+        return;
+    }
+    modal.classList.remove("hidden");
+    document.body.classList.add("modal-open");
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) {
+        return;
+    }
+    modal.classList.add("hidden");
+    document.body.classList.remove("modal-open");
+}
+
 function roleHome(role) {
     if (role === "student") {
         return "/booking-page";
@@ -305,6 +332,14 @@ function canManageTimeSlot(slot) {
     return user.role === "admin" || (user.role === "advisor" && Number(slot.advisor_id) === Number(user.id));
 }
 
+function advisorLabel(slot) {
+    return slot.advisor_name || `Cố vấn #${slot.advisor_id}`;
+}
+
+function timeRangeLabel(item) {
+    return `${item.slot_date} - ${item.start_time} đến ${item.end_time}`;
+}
+
 async function login(event) {
     if (event) {
         event.preventDefault();
@@ -396,9 +431,46 @@ async function loadProfile() {
                 <div><span>Trạng thái</span><strong>${data.is_active ? "Đang hoạt động" : "Đã khóa"}</strong></div>
             </div>
         `;
+        const nameInput = document.getElementById("profile-full-name");
+        if (nameInput) {
+            nameInput.value = data.full_name || "";
+        }
     } catch (error) {
         target.className = "profile-panel empty-state";
         target.textContent = `Lỗi kết nối: ${error.message}`;
+    }
+}
+
+async function submitProfileForm(event) {
+    event.preventDefault();
+    const nameInput = document.getElementById("profile-full-name");
+    if (!nameInput) {
+        return;
+    }
+    const fullName = nameInput.value.trim();
+    if (!fullName) {
+        setMessage("profile-message", "Họ tên không được để trống.", true);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/users/me/profile`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify({ full_name: fullName }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("profile-message", getErrorMessage(data, "Cập nhật họ tên thất bại"), true);
+            return;
+        }
+
+        setStoredUser(data);
+        updateNavbar();
+        setMessage("profile-message", "Cập nhật họ tên thành công.");
+        await loadProfile();
+    } catch (error) {
+        setMessage("profile-message", `Lỗi kết nối: ${error.message}`, true);
     }
 }
 
@@ -466,7 +538,7 @@ function renderTimeSlots(data) {
                 ${data.map((slot) => `
                     <tr>
                         <td><strong>#${escapeHtml(slot.id)}</strong></td>
-                        <td>Cố vấn #${escapeHtml(slot.advisor_id)}</td>
+                        <td>${escapeHtml(advisorLabel(slot))}</td>
                         <td>${escapeHtml(slot.slot_date)}</td>
                         <td>${escapeHtml(slot.start_time)}</td>
                         <td>${escapeHtml(slot.end_time)}</td>
@@ -513,7 +585,8 @@ function renderMyAppointmentTable(data) {
                 <tr>
                     <th>Mã lịch</th>
                     <th>Dịch vụ</th>
-                    <th>Khung giờ</th>
+                    <th>Cố vấn</th>
+                    <th>Thời gian</th>
                     <th>Ghi chú</th>
                     <th>Trạng thái</th>
                     <th>Lý do hủy</th>
@@ -524,8 +597,9 @@ function renderMyAppointmentTable(data) {
                 ${data.map((appointment) => `
                     <tr>
                         <td><strong>#${escapeHtml(appointment.id)}</strong></td>
-                        <td>#${escapeHtml(appointment.service_id)}</td>
-                        <td>#${escapeHtml(appointment.timeslot_id)}</td>
+                        <td>${escapeHtml(appointment.service_name || `Dịch vụ #${appointment.service_id}`)}</td>
+                        <td>${escapeHtml(appointment.advisor_name || `Cố vấn #${appointment.advisor_id}`)}</td>
+                        <td>${escapeHtml(timeRangeLabel(appointment))}</td>
                         <td class="note-cell">${escapeHtml(appointment.note || "Không có")}</td>
                         <td><span class="badge ${statusClass(appointment.status)}">${escapeHtml(statusLabel(appointment.status))}</span></td>
                         <td class="note-cell">${escapeHtml(appointment.cancel_note || "Không có")}</td>
@@ -549,7 +623,8 @@ function renderAppointmentTable(data, showActions) {
                     <th>Mã lịch</th>
                     <th>Sinh viên</th>
                     <th>Dịch vụ</th>
-                    <th>Khung giờ</th>
+                    <th>Cố vấn</th>
+                    <th>Thời gian</th>
                     <th>Ghi chú</th>
                     <th>Trạng thái</th>
                     <th>Lý do hủy</th>
@@ -560,9 +635,10 @@ function renderAppointmentTable(data, showActions) {
                 ${data.map((appointment) => `
                     <tr>
                         <td><strong>#${escapeHtml(appointment.id)}</strong></td>
-                        <td>#${escapeHtml(appointment.student_id)}</td>
-                        <td>#${escapeHtml(appointment.service_id)}</td>
-                        <td>#${escapeHtml(appointment.timeslot_id)}</td>
+                        <td>${escapeHtml(appointment.student_name || `Sinh viên #${appointment.student_id}`)}</td>
+                        <td>${escapeHtml(appointment.service_name || `Dịch vụ #${appointment.service_id}`)}</td>
+                        <td>${escapeHtml(appointment.advisor_name || `Cố vấn #${appointment.advisor_id}`)}</td>
+                        <td>${escapeHtml(timeRangeLabel(appointment))}</td>
                         <td class="note-cell">${escapeHtml(appointment.note || "Không có")}</td>
                         <td><span class="badge ${statusClass(appointment.status)}">${escapeHtml(statusLabel(appointment.status))}</span></td>
                         <td class="note-cell">${escapeHtml(appointment.cancel_note || "Không có")}</td>
@@ -612,7 +688,7 @@ function renderSelectOptions(services, timeslots) {
     timeslotSelect.innerHTML = availableSlots.length
         ? `<option value="">Chọn khung giờ</option>${availableSlots.map((slot) => `
             <option value="${escapeHtml(slot.id)}">
-                Cố vấn #${escapeHtml(slot.advisor_id)} - ${escapeHtml(slot.slot_date)}
+                ${escapeHtml(advisorLabel(slot))} - ${escapeHtml(slot.slot_date)}
                 - ${escapeHtml(slot.start_time)} đến ${escapeHtml(slot.end_time)}
             </option>
         `).join("")}`
@@ -632,7 +708,7 @@ async function loadServices() {
 
     finishPageLoading("services-loading");
     showElement("services-content");
-    document.getElementById("admin-service-panel")?.classList.toggle("hidden", !isAdmin());
+    document.getElementById("open-service-modal-btn")?.classList.toggle("hidden", !isAdmin());
     setLoading("services-result", "Đang tải danh mục tư vấn...");
 
     try {
@@ -661,6 +737,21 @@ function resetServiceForm() {
     document.getElementById("service-name") && (document.getElementById("service-name").value = "");
     document.getElementById("service-description") && (document.getElementById("service-description").value = "");
     document.getElementById("service-is-active") && (document.getElementById("service-is-active").value = "true");
+    clearMessage("service-message");
+}
+
+function openServiceModal(service = null) {
+    resetServiceForm();
+    document.getElementById("service-modal-title").textContent = service
+        ? "Chỉnh sửa danh mục tư vấn"
+        : "Thêm danh mục tư vấn";
+    if (service) {
+        document.getElementById("service-id").value = service.id;
+        document.getElementById("service-name").value = service.name || "";
+        document.getElementById("service-description").value = service.description || "";
+        document.getElementById("service-is-active").value = service.is_active ? "true" : "false";
+    }
+    openModal("service-modal");
 }
 
 async function submitServiceForm(event) {
@@ -693,7 +784,8 @@ async function submitServiceForm(event) {
             setMessage("service-message", getErrorMessage(data, "Lưu danh mục thất bại"), true);
             return;
         }
-        setMessage("service-message", "Lưu danh mục tư vấn thành công.");
+        closeModal("service-modal");
+        setMessage("service-page-message", "Lưu danh mục tư vấn thành công.");
         resetServiceForm();
         await loadServices();
     } catch (error) {
@@ -712,13 +804,13 @@ async function deleteService(serviceId) {
         });
         const data = await response.json();
         if (!response.ok) {
-            setMessage("service-message", getErrorMessage(data, "Xóa danh mục thất bại"), true);
+            setMessage("service-page-message", getErrorMessage(data, "Xóa danh mục thất bại"), true);
             return;
         }
-        setMessage("service-message", data.message || "Cập nhật danh mục thành công.");
+        setMessage("service-page-message", data.message || "Cập nhật danh mục thành công.");
         await loadServices();
     } catch (error) {
-        setMessage("service-message", `Lỗi kết nối: ${error.message}`, true);
+        setMessage("service-page-message", `Lỗi kết nối: ${error.message}`, true);
     }
 }
 
@@ -735,7 +827,7 @@ async function loadTimeSlots() {
 
     finishPageLoading("timeslots-loading");
     showElement("timeslots-content");
-    setupTimeslotManagePanel();
+    await setupTimeslotManagePanel();
     setLoading("timeslots-result", "Đang tải khung giờ tư vấn...");
 
     try {
@@ -759,20 +851,60 @@ async function loadTimeSlots() {
     }
 }
 
-function setupTimeslotManagePanel() {
-    const panel = document.getElementById("timeslot-manage-panel");
-    const advisorInput = document.getElementById("timeslot-advisor-id");
+async function setupTimeslotManagePanel() {
+    const openButton = document.getElementById("open-timeslot-modal-btn");
+    if (openButton) {
+        openButton.classList.toggle("hidden", !isStaff());
+    }
+}
+
+async function prepareTimeslotAdvisorSelect(selectedAdvisorId = "") {
+    const advisorSelect = document.getElementById("timeslot-advisor-id");
+    const advisorNote = document.getElementById("timeslot-advisor-note");
     const user = getCurrentUser();
-    if (!panel || !advisorInput || !user) {
+    if (!advisorSelect || !user) {
         return;
     }
 
-    panel.classList.toggle("hidden", !isStaff());
     if (user.role === "advisor") {
-        advisorInput.value = user.id;
-        advisorInput.readOnly = true;
-    } else {
-        advisorInput.readOnly = false;
+        advisorSelect.innerHTML = `
+            <option value="${escapeHtml(user.id)}">${escapeHtml(user.full_name || user.email)} - #${escapeHtml(user.id)}</option>
+        `;
+        advisorSelect.value = String(user.id);
+        advisorSelect.disabled = true;
+        if (advisorNote) {
+            advisorNote.textContent = `Cố vấn phụ trách: ${user.full_name || user.email}.`;
+        }
+        return;
+    }
+
+    if (user.role === "admin") {
+        advisorSelect.disabled = false;
+        advisorSelect.innerHTML = `<option value="">Đang tải danh sách cố vấn...</option>`;
+        if (advisorNote) {
+            advisorNote.textContent = "Admin chọn một cố vấn đang hoạt động để tạo khung giờ.";
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/users/advisors/active`, {
+                headers: getAuthHeaders(),
+            });
+            const advisors = await response.json();
+            if (!response.ok) {
+                advisorSelect.innerHTML = `<option value="">Không tải được danh sách cố vấn</option>`;
+                return;
+            }
+            advisorSelect.innerHTML = Array.isArray(advisors) && advisors.length
+                ? `<option value="">Chọn cố vấn phụ trách</option>${advisors.map((advisor) => `
+                    <option value="${escapeHtml(advisor.id)}">${escapeHtml(advisor.full_name || advisor.email)} - #${escapeHtml(advisor.id)}</option>
+                `).join("")}`
+                : `<option value="">Chưa có advisor đang hoạt động</option>`;
+            if (selectedAdvisorId) {
+                advisorSelect.value = String(selectedAdvisorId);
+            }
+        } catch {
+            advisorSelect.innerHTML = `<option value="">Không tải được danh sách cố vấn</option>`;
+        }
     }
 }
 
@@ -782,10 +914,30 @@ function resetTimeslotForm() {
     document.getElementById("timeslot-date") && (document.getElementById("timeslot-date").value = "");
     document.getElementById("timeslot-start") && (document.getElementById("timeslot-start").value = "");
     document.getElementById("timeslot-end") && (document.getElementById("timeslot-end").value = "");
-    const advisorInput = document.getElementById("timeslot-advisor-id");
-    if (advisorInput) {
-        advisorInput.value = user?.role === "advisor" ? user.id : "";
+    const advisorSelect = document.getElementById("timeslot-advisor-id");
+    if (advisorSelect) {
+        if (user?.role === "advisor") {
+            advisorSelect.value = String(user.id);
+        } else {
+            advisorSelect.value = "";
+        }
     }
+    clearMessage("timeslot-message");
+}
+
+async function openTimeSlotModal(timeslot = null) {
+    resetTimeslotForm();
+    document.getElementById("timeslot-modal-title").textContent = timeslot
+        ? "Chỉnh sửa khung giờ"
+        : "Thêm khung giờ";
+    await prepareTimeslotAdvisorSelect(timeslot?.advisor_id || "");
+    if (timeslot) {
+        document.getElementById("timeslot-id").value = timeslot.id;
+        document.getElementById("timeslot-date").value = timeslot.slot_date;
+        document.getElementById("timeslot-start").value = String(timeslot.start_time).slice(0, 5);
+        document.getElementById("timeslot-end").value = String(timeslot.end_time).slice(0, 5);
+    }
+    openModal("timeslot-modal");
 }
 
 async function submitTimeslotForm(event) {
@@ -821,7 +973,8 @@ async function submitTimeslotForm(event) {
             setMessage("timeslot-message", getErrorMessage(data, "Lưu khung giờ thất bại"), true);
             return;
         }
-        setMessage("timeslot-message", "Lưu khung giờ thành công.");
+        closeModal("timeslot-modal");
+        setMessage("timeslot-page-message", "Lưu khung giờ thành công.");
         resetTimeslotForm();
         await loadTimeSlots();
     } catch (error) {
@@ -840,13 +993,13 @@ async function deleteTimeSlot(timeslotId) {
         });
         const data = await response.json();
         if (!response.ok) {
-            setMessage("timeslot-message", getErrorMessage(data, "Xóa khung giờ thất bại"), true);
+            setMessage("timeslot-page-message", getErrorMessage(data, "Xóa khung giờ thất bại"), true);
             return;
         }
-        setMessage("timeslot-message", data.message || "Xóa khung giờ thành công.");
+        setMessage("timeslot-page-message", data.message || "Xóa khung giờ thành công.");
         await loadTimeSlots();
     } catch (error) {
-        setMessage("timeslot-message", `Lỗi kết nối: ${error.message}`, true);
+        setMessage("timeslot-page-message", `Lỗi kết nối: ${error.message}`, true);
     }
 }
 
@@ -1110,10 +1263,7 @@ function bindServiceActions() {
         const deleteButton = event.target.closest("[data-service-action='delete']");
         if (editButton) {
             const service = JSON.parse(editButton.dataset.service);
-            document.getElementById("service-id").value = service.id;
-            document.getElementById("service-name").value = service.name || "";
-            document.getElementById("service-description").value = service.description || "";
-            document.getElementById("service-is-active").value = service.is_active ? "true" : "false";
+            openServiceModal(service);
         }
         if (deleteButton) {
             deleteService(deleteButton.dataset.id);
@@ -1131,12 +1281,7 @@ function bindTimeSlotActions() {
         const deleteButton = event.target.closest("[data-timeslot-action='delete']");
         if (editButton) {
             const timeslot = JSON.parse(editButton.dataset.timeslot);
-            document.getElementById("timeslot-id").value = timeslot.id;
-            document.getElementById("timeslot-advisor-id").value = timeslot.advisor_id;
-            document.getElementById("timeslot-date").value = timeslot.slot_date;
-            document.getElementById("timeslot-start").value = String(timeslot.start_time).slice(0, 5);
-            document.getElementById("timeslot-end").value = String(timeslot.end_time).slice(0, 5);
-            setMessage("timeslot-message", "Đang sửa khung giờ. Chỉ sửa được slot còn available.");
+            openTimeSlotModal(timeslot);
         }
         if (deleteButton) {
             deleteTimeSlot(deleteButton.dataset.id);
@@ -1363,17 +1508,21 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("nav-logout")?.addEventListener("click", logout);
     document.getElementById("logout-btn")?.addEventListener("click", logout);
     document.getElementById("load-profile-btn")?.addEventListener("click", loadProfile);
+    document.getElementById("profile-form")?.addEventListener("submit", submitProfileForm);
     document.getElementById("load-services-btn")?.addEventListener("click", loadServices);
+    document.getElementById("open-service-modal-btn")?.addEventListener("click", () => openServiceModal());
     document.getElementById("load-timeslots-btn")?.addEventListener("click", loadTimeSlots);
+    document.getElementById("open-timeslot-modal-btn")?.addEventListener("click", () => openTimeSlotModal());
     document.getElementById("load-my-appointments-btn")?.addEventListener("click", loadMyAppointments);
     document.getElementById("load-booking-data-btn")?.addEventListener("click", () => loadBookingData(true));
     document.getElementById("booking-form")?.addEventListener("submit", createAppointment);
     document.getElementById("load-advisor-appointments-btn")?.addEventListener("click", loadAdvisorAppointments);
     document.getElementById("service-form")?.addEventListener("submit", submitServiceForm);
-    document.getElementById("reset-service-form-btn")?.addEventListener("click", resetServiceForm);
     document.getElementById("timeslot-form")?.addEventListener("submit", submitTimeslotForm);
-    document.getElementById("reset-timeslot-form-btn")?.addEventListener("click", resetTimeslotForm);
     document.getElementById("load-admin-users-btn")?.addEventListener("click", loadAdminUsers);
+    document.querySelectorAll("[data-close-modal]").forEach((button) => {
+        button.addEventListener("click", () => closeModal(button.dataset.closeModal));
+    });
     bindMyAppointmentActions();
     bindServiceActions();
     bindTimeSlotActions();

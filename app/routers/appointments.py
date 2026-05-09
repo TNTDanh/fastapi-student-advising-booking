@@ -7,7 +7,12 @@ from app.models.service import Service
 from app.models.timeslot import TimeSlot
 from app.models.user import User
 from app.routers.auth import get_current_user, require_roles
-from app.schemas.appointment import AppointmentCancelRequest, AppointmentCreate, AppointmentRead
+from app.schemas.appointment import (
+    AppointmentCancelRequest,
+    AppointmentCreate,
+    AppointmentDisplayRead,
+    AppointmentRead,
+)
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -42,6 +47,63 @@ def ensure_advisor_or_admin_can_manage(current_user: User, timeslot: TimeSlot):
         status_code=403,
         detail="You do not have permission to manage this appointment",
     )
+
+
+def user_display_name(user: User | None, fallback: str) -> str:
+    """Lay ten hien thi cua user, neu thieu thi dung fallback."""
+    if user:
+        return user.full_name or user.email or fallback
+    return fallback
+
+
+def build_appointment_display(db: Session, appointments: list[Appointment]):
+    """Gom du lieu hien thi appointment ma khong can relationship ORM."""
+    if not appointments:
+        return []
+
+    student_ids = {appointment.student_id for appointment in appointments}
+    service_ids = {appointment.service_id for appointment in appointments}
+    timeslot_ids = {appointment.timeslot_id for appointment in appointments}
+
+    students = db.query(User).filter(User.id.in_(student_ids)).all()
+    services = db.query(Service).filter(Service.id.in_(service_ids)).all()
+    timeslots = db.query(TimeSlot).filter(TimeSlot.id.in_(timeslot_ids)).all()
+
+    student_map = {student.id: student for student in students}
+    service_map = {service.id: service for service in services}
+    timeslot_map = {timeslot.id: timeslot for timeslot in timeslots}
+
+    advisor_ids = {timeslot.advisor_id for timeslot in timeslots}
+    advisors = db.query(User).filter(User.id.in_(advisor_ids)).all() if advisor_ids else []
+    advisor_map = {advisor.id: advisor for advisor in advisors}
+
+    result = []
+    for appointment in appointments:
+        timeslot = timeslot_map[appointment.timeslot_id]
+        advisor = advisor_map.get(timeslot.advisor_id)
+        student = student_map.get(appointment.student_id)
+        service = service_map.get(appointment.service_id)
+
+        result.append(
+            {
+                "id": appointment.id,
+                "student_id": appointment.student_id,
+                "student_name": user_display_name(student, f"Sinh viên #{appointment.student_id}"),
+                "service_id": appointment.service_id,
+                "service_name": service.name if service else f"Dịch vụ #{appointment.service_id}",
+                "timeslot_id": appointment.timeslot_id,
+                "advisor_id": timeslot.advisor_id,
+                "advisor_name": user_display_name(advisor, f"Cố vấn #{timeslot.advisor_id}"),
+                "slot_date": timeslot.slot_date,
+                "start_time": timeslot.start_time,
+                "end_time": timeslot.end_time,
+                "note": appointment.note,
+                "status": appointment.status,
+                "cancel_note": appointment.cancel_note,
+                "cancelled_by": appointment.cancelled_by,
+            }
+        )
+    return result
 
 
 @router.post("/", response_model=AppointmentRead)
@@ -79,7 +141,7 @@ def create_appointment(
     return appointment
 
 
-@router.get("/", response_model=list[AppointmentRead])
+@router.get("/", response_model=list[AppointmentDisplayRead])
 def list_appointments_for_staff(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["advisor", "admin"])),
@@ -87,7 +149,8 @@ def list_appointments_for_staff(
     """Advisor/admin xem appointment de xu ly."""
     # Admin xem tat ca appointment
     if current_user.role == "admin":
-        return db.query(Appointment).order_by(Appointment.id.asc()).all()
+        appointments = db.query(Appointment).order_by(Appointment.id.asc()).all()
+        return build_appointment_display(db, appointments)
 
     # Advisor chi xem appointment gan voi timeslot cua minh
     slots = db.query(TimeSlot).filter(TimeSlot.advisor_id == current_user.id).all()
@@ -95,27 +158,29 @@ def list_appointments_for_staff(
     if not timeslot_ids:
         return []
 
-    return (
+    appointments = (
         db.query(Appointment)
         .filter(Appointment.timeslot_id.in_(timeslot_ids))
         .order_by(Appointment.id.asc())
         .all()
     )
+    return build_appointment_display(db, appointments)
 
 
-@router.get("/my", response_model=list[AppointmentRead])
+@router.get("/my", response_model=list[AppointmentDisplayRead])
 def list_my_appointments(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["student"])),
 ):
     """Student xem danh sach lich hen cua chinh minh."""
     # Chi lay appointment cua user dang dang nhap
-    return (
+    appointments = (
         db.query(Appointment)
         .filter(Appointment.student_id == current_user.id)
         .order_by(Appointment.id.asc())
         .all()
     )
+    return build_appointment_display(db, appointments)
 
 
 @router.put("/{appointment_id}/confirm", response_model=AppointmentRead)

@@ -19,38 +19,48 @@
     </section>
 
     <section class="panel">
-        <section id="timeslot-manage-panel" class="management-panel hidden">
-            <h2>Quản lý khung giờ</h2>
-            <p>Advisor tạo/sửa/xóa khung giờ của mình. Admin có thể quản lý tất cả khung giờ.</p>
-            <form id="timeslot-form" class="form-card management-form">
-                <input id="timeslot-id" type="hidden">
-
-                <label for="timeslot-advisor-id">Mã cố vấn</label>
-                <input id="timeslot-advisor-id" type="number" min="1" required>
-
-                <label for="timeslot-date">Ngày tư vấn</label>
-                <input id="timeslot-date" type="date" required>
-
-                <label for="timeslot-start">Giờ bắt đầu</label>
-                <input id="timeslot-start" type="time" required>
-
-                <label for="timeslot-end">Giờ kết thúc</label>
-                <input id="timeslot-end" type="time" required>
-
-                <div class="toolbar">
-                    <button class="button" type="submit">Lưu khung giờ</button>
-                    <button id="reset-timeslot-form-btn" class="button button-light" type="button">Làm mới form</button>
-                </div>
-            </form>
-            <div id="timeslot-message" class="message" aria-live="polite"></div>
-        </section>
-
         <div class="toolbar">
+            <button id="open-timeslot-modal-btn" class="button hidden" type="button">Thêm khung giờ</button>
             <button id="load-timeslots-btn" class="button" type="button">Làm mới khung giờ</button>
         </div>
+        <div id="timeslot-page-message" class="message" aria-live="polite"></div>
         <div id="timeslots-result" class="table-wrap">
             <div class="empty-state">Đang tải khung giờ...</div>
         </div>
     </section>
 </section>
+
+<div id="timeslot-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="timeslot-modal-title">
+    <div class="modal-panel">
+        <div class="modal-header">
+            <h2 id="timeslot-modal-title">Thêm khung giờ</h2>
+            <button class="modal-close" type="button" data-close-modal="timeslot-modal">Đóng</button>
+        </div>
+        <form id="timeslot-form" class="form-card modal-form">
+            <input id="timeslot-id" type="hidden">
+
+            <label for="timeslot-advisor-id">Cố vấn phụ trách</label>
+            <select id="timeslot-advisor-id" required>
+                <option value="">Đang tải danh sách cố vấn...</option>
+            </select>
+            <p id="timeslot-advisor-note" class="form-note">Admin chọn cố vấn đang hoạt động. Advisor tự tạo khung giờ cho chính mình.</p>
+
+            <label for="timeslot-date">Ngày tư vấn</label>
+            <input id="timeslot-date" type="date" required>
+
+            <label for="timeslot-start">Giờ bắt đầu</label>
+            <input id="timeslot-start" type="time" required>
+
+            <label for="timeslot-end">Giờ kết thúc</label>
+            <input id="timeslot-end" type="time" required>
+
+            <div id="timeslot-message" class="message" aria-live="polite"></div>
+
+            <div class="modal-actions">
+                <button class="button" type="submit">Lưu</button>
+                <button class="button button-light" type="button" data-close-modal="timeslot-modal">Hủy</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

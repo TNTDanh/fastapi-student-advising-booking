@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead, UserRoleUpdate, UserStatusUpdate
-from app.routers.auth import require_roles
+from app.schemas.user import UserCreate, UserProfileUpdate, UserRead, UserRoleUpdate, UserStatusUpdate
+from app.routers.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/users", tags=["Users"])
 ALLOWED_ROLES = {"student", "advisor", "admin"}
@@ -47,6 +47,37 @@ def list_users(
     """Lay danh sach tat ca nguoi dung (admin only, vi tra ve toan bo user)."""
     # Chua phan trang/filter vi day chi la route kiem tra
     return db.query(User).all()
+
+
+@router.get("/advisors/active", response_model=list[UserRead])
+def list_active_advisors(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["advisor", "admin"])),
+):
+    """Lay danh sach advisor dang hoat dong de admin chon khi tao timeslot."""
+    return (
+        db.query(User)
+        .filter(User.role == "advisor", User.is_active.is_(True))
+        .order_by(User.full_name.asc())
+        .all()
+    )
+
+
+@router.put("/me/profile", response_model=UserRead)
+def update_my_profile(
+    payload: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """User dang dang nhap tu cap nhat ho ten cua chinh minh."""
+    full_name = payload.full_name.strip()
+    if not full_name:
+        raise HTTPException(status_code=400, detail="Full name is required")
+
+    current_user.full_name = full_name
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 
 @router.put("/{user_id}/role", response_model=UserRead)

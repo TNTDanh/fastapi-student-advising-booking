@@ -29,5 +29,13 @@
     <div id="profile-result" class="profile-panel empty-state">
         Đang tải thông tin cá nhân...
     </div>
+
+    <form id="profile-form" class="form-card profile-form">
+        <h2>Cập nhật họ tên</h2>
+        <label for="profile-full-name">Họ tên</label>
+        <input id="profile-full-name" type="text" placeholder="Nhập họ tên mới" required>
+        <button class="button" type="submit">Lưu thay đổi</button>
+    </form>
+    <div id="profile-message" class="message" aria-live="polite"></div>
 </section>
 {% endblock %}

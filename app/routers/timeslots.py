@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.timeslot import TimeSlot
 from app.models.user import User
-from app.schemas.timeslot import TimeSlotCreate, TimeSlotRead, TimeSlotUpdate
+from app.schemas.timeslot import TimeSlotCreate, TimeSlotDisplayRead, TimeSlotRead, TimeSlotUpdate
 from app.routers.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/timeslots", tags=["TimeSlots"])
@@ -25,6 +25,13 @@ def ensure_can_manage_timeslot(current_user: User, timeslot: TimeSlot):
     if current_user.role == "advisor" and timeslot.advisor_id == current_user.id:
         return
     raise HTTPException(status_code=403, detail="You do not have permission to manage this timeslot")
+
+
+def user_display_name(user: User | None, fallback_id: int) -> str:
+    """Lay ten hien thi cua co van, neu thieu thi fallback theo id."""
+    if user:
+        return user.full_name or user.email or f"Cố vấn #{fallback_id}"
+    return f"Cố vấn #{fallback_id}"
 
 
 @router.post("/", response_model=TimeSlotRead)
@@ -55,13 +62,29 @@ def create_timeslot(
     return timeslot
 
 
-@router.get("/", response_model=list[TimeSlotRead])
+@router.get("/", response_model=list[TimeSlotDisplayRead])
 def list_timeslots(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Danh sach khung gio (bat ky user da dang nhap)."""
-    return db.query(TimeSlot).all()
+    """Danh sach khung gio kem ten co van (bat ky user da dang nhap)."""
+    timeslots = db.query(TimeSlot).order_by(TimeSlot.id.asc()).all()
+    advisor_ids = {slot.advisor_id for slot in timeslots}
+    advisors = db.query(User).filter(User.id.in_(advisor_ids)).all() if advisor_ids else []
+    advisor_map = {advisor.id: advisor for advisor in advisors}
+
+    return [
+        {
+            "id": slot.id,
+            "advisor_id": slot.advisor_id,
+            "advisor_name": user_display_name(advisor_map.get(slot.advisor_id), slot.advisor_id),
+            "slot_date": slot.slot_date,
+            "start_time": slot.start_time,
+            "end_time": slot.end_time,
+            "status": slot.status,
+        }
+        for slot in timeslots
+    ]
 
 
 @router.put("/{timeslot_id}", response_model=TimeSlotRead)

@@ -33,3 +33,9 @@ class UserStatusUpdate(BaseModel):
     """Payload admin dung de khoa/mo tai khoan."""
 
     is_active: bool
+
+
+class UserProfileUpdate(BaseModel):
+    """Payload user dung de cap nhat ten cua chinh minh."""
+
+    full_name: str
