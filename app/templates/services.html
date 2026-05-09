@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="services-guard" class="guard-card hidden">
+    <h2>Bạn cần đăng nhập để xem nội dung này</h2>
+    <p>Danh mục tư vấn chỉ hiển thị cho người dùng đã đăng nhập.</p>
+    <a class="button" href="/login">Đi đến đăng nhập</a>
+</section>
+
+<section id="services-content" class="hidden">
+    <section class="page-title">
+        <p class="eyebrow">Danh mục tư vấn</p>
+        <h1>Danh mục tư vấn</h1>
+        <p>Các loại tư vấn học tập đang được hệ thống cung cấp.</p>
+    </section>
+
+    <section class="panel">
+        <div class="toolbar">
+            <button id="load-services-btn" class="button" type="button">Làm mới danh mục tư vấn</button>
+        </div>
+        <div id="services-result" class="card-list">
+            <div class="empty-state">Đang tải danh mục tư vấn...</div>
+        </div>
+    </section>
+</section>
+{% endblock %}

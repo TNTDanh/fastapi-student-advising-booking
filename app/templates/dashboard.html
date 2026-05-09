@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-title">
+    <p class="eyebrow">Tài khoản</p>
+    <h1>Thông tin cá nhân</h1>
+    <p>Trang này tự tải thông tin tài khoản nếu bạn đã đăng nhập.</p>
+</section>
+
+<section id="dashboard-guard" class="guard-card hidden"></section>
+
+<section id="dashboard-content" class="panel hidden">
+    <div class="status-card">
+        <div>
+            <span>Trạng thái đăng nhập</span>
+            <strong id="token-status">Đang kiểm tra...</strong>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <button id="load-profile-btn" class="button" type="button">Tải lại thông tin</button>
+        <button id="logout-btn" class="button button-light" type="button">Đăng xuất</button>
+    </div>
+
+    <div id="profile-result" class="profile-panel empty-state">
+        Đang tải thông tin cá nhân...
+    </div>
+</section>
+{% endblock %}

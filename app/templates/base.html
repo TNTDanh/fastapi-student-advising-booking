@@ -1,19 +1,34 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title if title else "Student Advising Booking System" }}</title>
+    <title>{{ title if title else "Hệ thống đặt lịch tư vấn học tập" }}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
 </head>
 <body>
-    <!-- Khung giao dien chung -->
+    <!-- Navbar dùng data-role để app.js ẩn/hiện theo trạng thái đăng nhập -->
     <header class="page-header">
-        <div class="brand">Student Advising Booking System</div>
-        <nav class="nav-links">
-            <a href="/">Trang chu</a>
-            <a href="/docs">API Docs</a>
-        </nav>
+        <div class="header-shell">
+            <a class="brand" href="/">
+                <span class="brand-mark">SA</span>
+                <span>
+                    <strong>Hệ thống đặt lịch tư vấn học tập</strong>
+                    <small>Khoa Công nghệ Thông tin - Trường Đại học</small>
+                </span>
+            </a>
+            <nav class="nav-links" id="main-nav">
+                <a class="nav-link" data-nav="home" href="/">Trang chủ</a>
+                <a class="nav-link nav-auth" id="nav-login" data-guest="true" href="/login">Đăng nhập</a>
+                <a class="nav-link" data-nav="dashboard" data-auth="true" href="/dashboard">Thông tin cá nhân</a>
+                <a class="nav-link" data-nav="booking" data-roles="student" href="/booking-page">Đặt lịch tư vấn</a>
+                <a class="nav-link" data-nav="my-appointments" data-roles="student" href="/my-appointments-page">Lịch hẹn của tôi</a>
+                <a class="nav-link" data-nav="services" href="/services-page">Danh mục tư vấn</a>
+                <a class="nav-link" data-nav="timeslots" href="/timeslots-page">Khung giờ tư vấn</a>
+                <a class="nav-link" data-nav="advisor-appointments" data-roles="advisor,admin" href="/advisor-appointments-page">Quản lý lịch hẹn</a>
+                <button class="nav-link nav-button hidden" id="nav-logout" type="button">Đăng xuất</button>
+            </nav>
+        </div>
     </header>
 
     <main class="page-content">
@@ -21,7 +36,9 @@
     </main>
 
     <footer class="page-footer">
-        <small>Khoi tao khung du an FastAPI (chua co logic).</small>
+        <small>Giao diện minh họa cho đồ án Student Advising Booking System.</small>
     </footer>
+
+    <script src="{{ url_for('static', path='app.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="booking-guard" class="guard-card hidden"></section>
+
+<section id="booking-content" class="booking-layout hidden">
+    <aside class="booking-info">
+        <p class="eyebrow">Đặt lịch tư vấn</p>
+        <h1>Chọn lịch tư vấn phù hợp với nhu cầu học tập</h1>
+        <p>
+            Hệ thống tự tải danh mục tư vấn và chỉ hiển thị các khung giờ còn trống.
+            Sau khi đặt thành công, bạn sẽ được chuyển đến trang lịch hẹn của tôi.
+        </p>
+        <div class="alert-box">
+            Chức năng này chỉ dành cho tài khoản sinh viên.
+        </div>
+    </aside>
+
+    <section class="panel booking-panel">
+        <h2>Thông tin đặt lịch</h2>
+        <form id="booking-form" class="form-card booking-form">
+            <label for="booking-service">Loại tư vấn</label>
+            <select id="booking-service" required>
+                <option value="">Đang tải danh mục tư vấn...</option>
+            </select>
+
+            <label for="booking-timeslot">Khung giờ tư vấn</label>
+            <select id="booking-timeslot" required>
+                <option value="">Đang tải khung giờ...</option>
+            </select>
+
+            <label for="booking-note">Ghi chú</label>
+            <textarea id="booking-note" rows="4" placeholder="Nhập nội dung cần tư vấn hoặc ghi chú thêm"></textarea>
+
+            <div class="toolbar">
+                <button id="load-booking-data-btn" class="button button-secondary" type="button">Tải lại dữ liệu</button>
+                <button class="button" type="submit">Đặt lịch</button>
+            </div>
+        </form>
+
+        <div id="booking-message" class="message" aria-live="polite"></div>
+    </section>
+</section>
+{% endblock %}

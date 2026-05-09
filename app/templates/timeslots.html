@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="timeslots-guard" class="guard-card hidden">
+    <h2>Bạn cần đăng nhập để xem nội dung này</h2>
+    <p>Khung giờ tư vấn chỉ hiển thị cho người dùng đã đăng nhập.</p>
+    <a class="button" href="/login">Đi đến đăng nhập</a>
+</section>
+
+<section id="timeslots-content" class="hidden">
+    <section class="page-title">
+        <p class="eyebrow">Khung giờ tư vấn</p>
+        <h1>Khung giờ tư vấn</h1>
+        <p>Danh sách khung giờ tư vấn dành cho người dùng đã đăng nhập.</p>
+    </section>
+
+    <section class="panel">
+        <div class="toolbar">
+            <button id="load-timeslots-btn" class="button" type="button">Làm mới khung giờ</button>
+        </div>
+        <div id="timeslots-result" class="table-wrap">
+            <div class="empty-state">Đang tải khung giờ...</div>
+        </div>
+    </section>
+</section>
+{% endblock %}

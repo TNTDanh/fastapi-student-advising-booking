@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-title">
+    <p class="eyebrow">Lịch hẹn</p>
+    <h1>Lịch hẹn của tôi</h1>
+    <p>Trang này tự tải các lịch tư vấn đã đặt của sinh viên đang đăng nhập.</p>
+</section>
+
+<section id="my-appointments-guard" class="guard-card hidden"></section>
+
+<section id="my-appointments-content" class="panel hidden">
+    <div class="toolbar">
+        <button id="load-my-appointments-btn" class="button" type="button">Tải lại lịch hẹn</button>
+    </div>
+    <div id="my-appointments-result" class="table-wrap">
+        <div class="empty-state">Đang tải lịch hẹn...</div>
+    </div>
+</section>
+{% endblock %}

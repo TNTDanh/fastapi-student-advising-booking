@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db.base import Base  # dang ky model
 from app.db.session import engine
-from app.routers import auth, services, timeslots, users, web
+from app.routers import appointments, auth, services, timeslots, users, web
 
 # Khoi tao ung dung FastAPI co ban
 app = FastAPI(title="Student Advising Booking System")
@@ -27,3 +27,4 @@ app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(services.router)
 app.include_router(timeslots.router)
+app.include_router(appointments.router)

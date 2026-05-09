@@ -1,9 +1,45 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
+
 {% block content %}
-<!-- Trang gioi thieu ngan gon -->
-<section class="hero">
-    <h1>Student Advising Booking System</h1>
-    <p>Khung ung dung dat lich co van sinh vien. Logic va co so du lieu se them sau.</p>
-    <a class="button" href="/docs">Xem tai lieu API (/docs)</a>
+<section class="hero-section">
+    <div class="hero-copy">
+        <p class="eyebrow">Cổng tư vấn học tập trực tuyến</p>
+        <h1>Đặt lịch tư vấn học tập nhanh chóng và rõ ràng</h1>
+        <p>
+            Sinh viên có thể xem danh mục tư vấn, kiểm tra khung giờ còn trống,
+            đặt lịch và theo dõi trạng thái lịch hẹn trong cùng một hệ thống.
+        </p>
+        <div class="actions">
+            <a class="button" href="/services-page">Danh mục tư vấn</a>
+            <a class="button button-secondary" href="/booking-page">Đặt lịch tư vấn</a>
+            <a class="button button-light" href="/timeslots-page">Xem khung giờ</a>
+        </div>
+    </div>
+    <div class="hero-card">
+        <span class="hero-card-label">Quy trình</span>
+        <ol>
+            <li>Đăng nhập bằng tài khoản đã được cấp</li>
+            <li>Xem danh mục tư vấn và khung giờ còn trống</li>
+            <li>Sinh viên chọn loại tư vấn, chọn khung giờ và gửi lịch hẹn</li>
+        </ol>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <article class="feature-card">
+        <span>01</span>
+        <h2>Danh mục tư vấn</h2>
+        <p>Các loại tư vấn được quản lý tập trung để sinh viên chọn đúng nhu cầu học tập.</p>
+    </article>
+    <article class="feature-card">
+        <span>02</span>
+        <h2>Khung giờ linh hoạt</h2>
+        <p>Cố vấn công bố khung giờ còn trống, sinh viên đăng nhập để xem và đặt lịch.</p>
+    </article>
+    <article class="feature-card">
+        <span>03</span>
+        <h2>Theo dõi trạng thái</h2>
+        <p>Lịch hẹn có trạng thái rõ ràng: chờ xác nhận, đã xác nhận, đã hủy hoặc hoàn thành.</p>
+    </article>
 </section>
 {% endblock %}
