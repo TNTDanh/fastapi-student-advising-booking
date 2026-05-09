@@ -14,6 +14,31 @@
 </section>
 
 <section id="admin-users-content" class="panel hidden">
+    <section class="filter-bar" aria-label="Bộ lọc người dùng">
+        <label>
+            <span>Tìm kiếm</span>
+            <input id="user-filter-keyword" type="search" placeholder="Tìm theo họ tên hoặc email">
+        </label>
+        <label>
+            <span>Vai trò</span>
+            <select id="user-filter-role">
+                <option value="">Tất cả vai trò</option>
+                <option value="student">Student</option>
+                <option value="advisor">Advisor</option>
+                <option value="admin">Admin</option>
+            </select>
+        </label>
+        <label>
+            <span>Trạng thái</span>
+            <select id="user-filter-status">
+                <option value="">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="locked">Đã khóa</option>
+            </select>
+        </label>
+        <button id="reset-user-filters-btn" class="button button-light" type="button">Làm mới bộ lọc</button>
+    </section>
+
     <div class="toolbar">
         <button id="load-admin-users-btn" class="button" type="button">Tải lại người dùng</button>
     </div>

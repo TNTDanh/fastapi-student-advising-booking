@@ -1,5 +1,7 @@
 const API_BASE = "";
 let runtimeUser = null;
+let originalUsers = [];
+let originalTimeSlots = [];
 
 function getToken() {
     return localStorage.getItem("access_token");
@@ -332,6 +334,27 @@ function canManageTimeSlot(slot) {
     return user.role === "admin" || (user.role === "advisor" && Number(slot.advisor_id) === Number(user.id));
 }
 
+function normalizeText(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function setupTimeSlotFilterByRole() {
+    const role = getCurrentRole();
+    const scopeWrap = document.getElementById("timeslot-filter-scope-wrap");
+    const advisorWrap = document.getElementById("timeslot-filter-advisor-wrap");
+    const scopeSelect = document.getElementById("timeslot-filter-scope");
+
+    if (scopeWrap) {
+        scopeWrap.classList.toggle("hidden", role !== "advisor");
+    }
+    if (advisorWrap) {
+        advisorWrap.classList.toggle("hidden", role === "advisor");
+    }
+    if (role === "advisor" && scopeSelect) {
+        scopeSelect.value = "mine";
+    }
+}
+
 function advisorLabel(slot) {
     return slot.advisor_name || `Cố vấn #${slot.advisor_id}`;
 }
@@ -516,7 +539,7 @@ function renderTimeSlots(data) {
     }
 
     if (!Array.isArray(data) || data.length === 0) {
-        setEmpty("timeslots-result", "Không có khung giờ nào.");
+        setEmpty("timeslots-result", "Không có khung giờ phù hợp.");
         return;
     }
 
@@ -827,6 +850,7 @@ async function loadTimeSlots() {
 
     finishPageLoading("timeslots-loading");
     showElement("timeslots-content");
+    setupTimeSlotFilterByRole();
     await setupTimeslotManagePanel();
     setLoading("timeslots-result", "Đang tải khung giờ tư vấn...");
 
@@ -845,10 +869,74 @@ async function loadTimeSlots() {
             return;
         }
 
-        renderTimeSlots(data);
+        originalTimeSlots = Array.isArray(data) ? data : [];
+        filterTimeSlots();
     } catch (error) {
         setEmpty("timeslots-result", `Lỗi kết nối: ${error.message}`);
     }
+}
+
+/**
+function hasExactWord(text, keyword) {
+    const normalizedKeyword = normalizeText(keyword).replace("#", "");
+    const words = normalizeText(text)
+        .split(/[\s,.;:()#\-_\/]+/)
+        .filter(Boolean);
+
+    return words.includes(normalizedKeyword);
+}
+**/
+
+function filterTimeSlots() {
+    const role = getCurrentRole();
+    const user = getCurrentUser();
+    const scope = document.getElementById("timeslot-filter-scope")?.value || "mine";
+    const advisorKeyword = normalizeText(document.getElementById("timeslot-filter-advisor")?.value);
+    const status = document.getElementById("timeslot-filter-status")?.value || "";
+    const date = document.getElementById("timeslot-filter-date")?.value || "";
+
+    let filtered = [...originalTimeSlots];
+    if (role === "advisor" && scope === "mine") {
+        filtered = filtered.filter((slot) => Number(slot.advisor_id) === Number(user?.id));
+    }
+    if (role !== "advisor" && advisorKeyword) {
+        filtered = filtered.filter((slot) => {
+            const advisorName = normalizeText(slot.advisor_name || `Cố vấn #${slot.advisor_id}`);
+            const advisorId = String(slot.advisor_id);
+            const compactKeyword = advisorKeyword.replace("#", "");
+            return advisorName.includes(advisorKeyword) || advisorId.includes(compactKeyword);
+        });
+    }
+    if (status) {
+        filtered = filtered.filter((slot) => slot.status === status);
+    }
+    if (date) {
+        filtered = filtered.filter((slot) => slot.slot_date === date);
+    }
+
+    renderTimeSlots(filtered);
+}
+
+function resetTimeSlotFilters() {
+    const role = getCurrentRole();
+    const scopeSelect = document.getElementById("timeslot-filter-scope");
+    const advisorInput = document.getElementById("timeslot-filter-advisor");
+    const statusSelect = document.getElementById("timeslot-filter-status");
+    const dateInput = document.getElementById("timeslot-filter-date");
+
+    if (scopeSelect) {
+        scopeSelect.value = role === "advisor" ? "mine" : "all";
+    }
+    if (advisorInput) {
+        advisorInput.value = "";
+    }
+    if (statusSelect) {
+        statusSelect.value = "";
+    }
+    if (dateInput) {
+        dateInput.value = "";
+    }
+    filterTimeSlots();
 }
 
 async function setupTimeslotManagePanel() {
@@ -1306,7 +1394,8 @@ async function loadAdminUsers() {
             setEmpty("admin-users-result", getErrorMessage(data, "Không tải được danh sách người dùng"));
             return;
         }
-        renderAdminUsers(data);
+        originalUsers = Array.isArray(data) ? data : [];
+        filterUsers();
     } catch (error) {
         setEmpty("admin-users-result", `Lỗi kết nối: ${error.message}`);
     }
@@ -1318,7 +1407,7 @@ function renderAdminUsers(data) {
         return;
     }
     if (!Array.isArray(data) || data.length === 0) {
-        setEmpty("admin-users-result", "Chưa có người dùng nào.");
+        setEmpty("admin-users-result", "Không tìm thấy người dùng phù hợp.");
         return;
     }
 
@@ -1365,6 +1454,47 @@ function renderAdminUsers(data) {
             </tbody>
         </table>
     `;
+}
+
+function filterUsers() {
+    const keyword = normalizeText(document.getElementById("user-filter-keyword")?.value);
+    const role = document.getElementById("user-filter-role")?.value || "";
+    const status = document.getElementById("user-filter-status")?.value || "";
+
+    let filtered = [...originalUsers];
+    if (keyword) {
+        filtered = filtered.filter((user) => (
+            normalizeText(user.full_name).includes(keyword)
+            || normalizeText(user.email).includes(keyword)
+        ));
+    }
+    if (role) {
+        filtered = filtered.filter((user) => user.role === role);
+    }
+    if (status === "active") {
+        filtered = filtered.filter((user) => user.is_active);
+    }
+    if (status === "locked") {
+        filtered = filtered.filter((user) => !user.is_active);
+    }
+
+    renderAdminUsers(filtered);
+}
+
+function resetUserFilters() {
+    const keywordInput = document.getElementById("user-filter-keyword");
+    const roleSelect = document.getElementById("user-filter-role");
+    const statusSelect = document.getElementById("user-filter-status");
+    if (keywordInput) {
+        keywordInput.value = "";
+    }
+    if (roleSelect) {
+        roleSelect.value = "";
+    }
+    if (statusSelect) {
+        statusSelect.value = "";
+    }
+    renderAdminUsers(originalUsers);
 }
 
 async function updateUserRole(userId) {
@@ -1512,6 +1642,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("load-services-btn")?.addEventListener("click", loadServices);
     document.getElementById("open-service-modal-btn")?.addEventListener("click", () => openServiceModal());
     document.getElementById("load-timeslots-btn")?.addEventListener("click", loadTimeSlots);
+    document.getElementById("timeslot-filter-scope")?.addEventListener("change", filterTimeSlots);
+    document.getElementById("timeslot-filter-advisor")?.addEventListener("input", filterTimeSlots);
+    document.getElementById("timeslot-filter-status")?.addEventListener("change", filterTimeSlots);
+    document.getElementById("timeslot-filter-date")?.addEventListener("change", filterTimeSlots);
+    document.getElementById("reset-timeslot-filters-btn")?.addEventListener("click", resetTimeSlotFilters);
     document.getElementById("open-timeslot-modal-btn")?.addEventListener("click", () => openTimeSlotModal());
     document.getElementById("load-my-appointments-btn")?.addEventListener("click", loadMyAppointments);
     document.getElementById("load-booking-data-btn")?.addEventListener("click", () => loadBookingData(true));
@@ -1520,6 +1655,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("service-form")?.addEventListener("submit", submitServiceForm);
     document.getElementById("timeslot-form")?.addEventListener("submit", submitTimeslotForm);
     document.getElementById("load-admin-users-btn")?.addEventListener("click", loadAdminUsers);
+    document.getElementById("user-filter-keyword")?.addEventListener("input", filterUsers);
+    document.getElementById("user-filter-role")?.addEventListener("change", filterUsers);
+    document.getElementById("user-filter-status")?.addEventListener("change", filterUsers);
+    document.getElementById("reset-user-filters-btn")?.addEventListener("click", resetUserFilters);
     document.querySelectorAll("[data-close-modal]").forEach((button) => {
         button.addEventListener("click", () => closeModal(button.dataset.closeModal));
     });

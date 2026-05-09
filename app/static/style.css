@@ -316,6 +316,47 @@ body.modal-open {
     margin-top: 18px;
 }
 
+.filter-bar {
+    align-items: end;
+    background: #f8fbff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    margin-bottom: 18px;
+    padding: 16px;
+}
+
+.filter-bar label {
+    display: grid;
+    gap: 6px;
+}
+
+.filter-bar span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.filter-bar input,
+.filter-bar select {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    min-height: 42px;
+    padding: 9px 11px;
+}
+
+.filter-bar input:focus,
+.filter-bar select:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    outline: none;
+}
+
 .management-panel {
     background: #f8fbff;
     border: 1px solid var(--border);
@@ -906,6 +947,10 @@ body.modal-open {
         justify-content: flex-start;
     }
 
+    .filter-bar {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+
     .hero-copy h1,
     .booking-info h1 {
         font-size: 34px;
@@ -933,6 +978,10 @@ body.modal-open {
     .nav-links a,
     .nav-button {
         padding: 8px 10px;
+    }
+
+    .filter-bar {
+        grid-template-columns: 1fr;
     }
 
     .management-form {

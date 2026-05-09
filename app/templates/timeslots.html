@@ -19,6 +19,33 @@
     </section>
 
     <section class="panel">
+        <section class="filter-bar" aria-label="Bộ lọc khung giờ">
+            <label id="timeslot-filter-scope-wrap" class="hidden">
+                <span>Phạm vi</span>
+                <select id="timeslot-filter-scope">
+                    <option value="mine">Khung giờ của tôi</option>
+                    <option value="all">Tất cả khung giờ</option>
+                </select>
+            </label>
+            <label id="timeslot-filter-advisor-wrap">
+                <span>Cố vấn</span>
+                <input id="timeslot-filter-advisor" type="search" placeholder="Tìm theo tên hoặc mã cố vấn (#id)">
+            </label>
+            <label>
+                <span>Trạng thái</span>
+                <select id="timeslot-filter-status">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="available">Còn trống</option>
+                    <option value="booked">Đã được đặt</option>
+                </select>
+            </label>
+            <label>
+                <span>Ngày</span>
+                <input id="timeslot-filter-date" type="date">
+            </label>
+            <button id="reset-timeslot-filters-btn" class="button button-light" type="button">Làm mới bộ lọc</button>
+        </section>
+
         <div class="toolbar">
             <button id="open-timeslot-modal-btn" class="button hidden" type="button">Thêm khung giờ</button>
             <button id="load-timeslots-btn" class="button" type="button">Làm mới khung giờ</button>
