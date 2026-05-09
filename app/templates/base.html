@@ -6,7 +6,7 @@
     <title>{{ title if title else "Hệ thống đặt lịch tư vấn học tập" }}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
 </head>
-<body>
+<body class="app-booting">
     <!-- Navbar dùng data-role để app.js ẩn/hiện theo trạng thái đăng nhập -->
     <header class="page-header">
         <div class="header-shell">
@@ -25,6 +25,7 @@
                 <a class="nav-link" data-nav="my-appointments" data-roles="student" href="/my-appointments-page">Lịch hẹn của tôi</a>
                 <a class="nav-link" data-nav="services" href="/services-page">Danh mục tư vấn</a>
                 <a class="nav-link" data-nav="timeslots" href="/timeslots-page">Khung giờ tư vấn</a>
+                <a class="nav-link" data-nav="admin-users" data-roles="admin" href="/admin-users-page">Người dùng</a>
                 <a class="nav-link" data-nav="advisor-appointments" data-roles="advisor,admin" href="/advisor-appointments-page">Quản lý lịch hẹn</a>
                 <button class="nav-link nav-button hidden" id="nav-logout" type="button">Đăng xuất</button>
             </nav>

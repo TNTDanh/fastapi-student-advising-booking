@@ -3,10 +3,19 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserCreate, UserRead, UserRoleUpdate, UserStatusUpdate
 from app.routers.auth import require_roles
 
 router = APIRouter(prefix="/users", tags=["Users"])
+ALLOWED_ROLES = {"student", "advisor", "admin"}
+
+
+def get_user_or_404(db: Session, user_id: int) -> User:
+    """Lay user theo id, khong co thi bao 404."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 @router.post("/", response_model=UserRead)
@@ -38,3 +47,39 @@ def list_users(
     """Lay danh sach tat ca nguoi dung (admin only, vi tra ve toan bo user)."""
     # Chua phan trang/filter vi day chi la route kiem tra
     return db.query(User).all()
+
+
+@router.put("/{user_id}/role", response_model=UserRead)
+def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    """Admin doi role user theo danh sach role hop le."""
+    if payload.role not in ALLOWED_ROLES:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    user = get_user_or_404(db, user_id)
+    if user.id == current_user.id and payload.role != "admin":
+        raise HTTPException(status_code=400, detail="Admin cannot remove own admin role")
+
+    user.role = payload.role
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.put("/{user_id}/status", response_model=UserRead)
+def update_user_status(
+    user_id: int,
+    payload: UserStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    """Admin khoa/mo tai khoan user."""
+    user = get_user_or_404(db, user_id)
+    user.is_active = payload.is_active
+    db.commit()
+    db.refresh(user)
+    return user

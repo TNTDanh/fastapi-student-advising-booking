@@ -8,6 +8,14 @@ class ServiceCreate(BaseModel):
     description: str | None = None
 
 
+class ServiceUpdate(BaseModel):
+    """Payload cap nhat service."""
+
+    name: str
+    description: str | None = None
+    is_active: bool
+
+
 class ServiceRead(BaseModel):
     """Schema output service."""
 

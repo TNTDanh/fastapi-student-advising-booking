@@ -40,6 +40,10 @@ function getCurrentRole() {
     return user?.role || null;
 }
 
+function getCurrentUser() {
+    return runtimeUser || getStoredUser();
+}
+
 function getAuthHeaders() {
     const token = getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -81,6 +85,20 @@ function setEmpty(targetId, text, actionHtml = "") {
             ${actionHtml}
         </div>
     `;
+}
+
+function setLoading(targetId, message = "Đang tải dữ liệu...") {
+    const target = document.getElementById(targetId);
+    if (!target) {
+        return;
+    }
+    target.innerHTML = `<div class="loading-box">${escapeHtml(message)}</div>`;
+}
+
+function finishPageLoading(loadingId) {
+    if (loadingId) {
+        hideElement(loadingId);
+    }
 }
 
 function roleHome(role) {
@@ -179,6 +197,21 @@ function showElement(id) {
     }
 }
 
+function setBookingFormLoading(isLoading) {
+    const serviceSelect = document.getElementById("booking-service");
+    const timeslotSelect = document.getElementById("booking-timeslot");
+    if (!serviceSelect || !timeslotSelect) {
+        return;
+    }
+
+    serviceSelect.disabled = isLoading;
+    timeslotSelect.disabled = isLoading;
+    if (isLoading) {
+        serviceSelect.innerHTML = `<option value="">Đang tải danh mục tư vấn...</option>`;
+        timeslotSelect.innerHTML = `<option value="">Đang tải khung giờ...</option>`;
+    }
+}
+
 function requireAuth(options = {}) {
     if (isAuthenticated()) {
         return true;
@@ -256,6 +289,22 @@ function statusClass(status) {
     return classes[status] || "badge-muted";
 }
 
+function isAdmin() {
+    return getCurrentRole() === "admin";
+}
+
+function isStaff() {
+    return ["advisor", "admin"].includes(getCurrentRole());
+}
+
+function canManageTimeSlot(slot) {
+    const user = getCurrentUser();
+    if (!user) {
+        return false;
+    }
+    return user.role === "admin" || (user.role === "advisor" && Number(slot.advisor_id) === Number(user.id));
+}
+
 async function login(event) {
     if (event) {
         event.preventDefault();
@@ -321,6 +370,9 @@ async function loadProfile() {
         return;
     }
 
+    target.className = "profile-panel";
+    target.innerHTML = `<div class="loading-box">Đang tải thông tin cá nhân...</div>`;
+
     try {
         const data = runtimeUser || getStoredUser() || await fetchCurrentUser();
         if (!data) {
@@ -373,6 +425,14 @@ function renderServices(data) {
                 </span>
             </div>
             <p>${escapeHtml(service.description || "Chưa có mô tả.")}</p>
+            ${isAdmin() ? `
+                <div class="row-actions">
+                    <button class="mini-button" data-service-action="edit" data-service='${escapeHtml(JSON.stringify(service))}'>Sửa</button>
+                    <button class="mini-button mini-button-muted" data-service-action="delete" data-id="${escapeHtml(service.id)}">
+                        ${service.is_active ? "Ngưng hoạt động / Xóa" : "Xóa"}
+                    </button>
+                </div>
+            ` : ""}
         </article>
     `).join("");
 }
@@ -388,6 +448,7 @@ function renderTimeSlots(data) {
         return;
     }
 
+    const showActions = isStaff();
     target.innerHTML = `
         <table class="data-table">
             <thead>
@@ -398,6 +459,7 @@ function renderTimeSlots(data) {
                     <th>Giờ bắt đầu</th>
                     <th>Giờ kết thúc</th>
                     <th>Trạng thái</th>
+                    ${showActions ? "<th>Thao tác</th>" : ""}
                 </tr>
             </thead>
             <tbody>
@@ -409,6 +471,16 @@ function renderTimeSlots(data) {
                         <td>${escapeHtml(slot.start_time)}</td>
                         <td>${escapeHtml(slot.end_time)}</td>
                         <td><span class="badge ${statusClass(slot.status)}">${escapeHtml(statusLabel(slot.status))}</span></td>
+                        ${showActions ? `
+                            <td>
+                                ${slot.status === "available" && canManageTimeSlot(slot) ? `
+                                    <div class="row-actions">
+                                        <button class="mini-button" data-timeslot-action="edit" data-timeslot='${escapeHtml(JSON.stringify(slot))}'>Sửa</button>
+                                        <button class="mini-button mini-button-muted" data-timeslot-action="delete" data-id="${escapeHtml(slot.id)}">Xóa</button>
+                                    </div>
+                                ` : `<span class="badge badge-muted">Không thể thao tác</span>`}
+                            </td>
+                        ` : ""}
                     </tr>
                 `).join("")}
             </tbody>
@@ -431,7 +503,42 @@ function renderMyAppointments(data) {
         return;
     }
 
-    target.innerHTML = renderAppointmentTable(data, false);
+    target.innerHTML = renderMyAppointmentTable(data);
+}
+
+function renderMyAppointmentTable(data) {
+    return `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mã lịch</th>
+                    <th>Dịch vụ</th>
+                    <th>Khung giờ</th>
+                    <th>Ghi chú</th>
+                    <th>Trạng thái</th>
+                    <th>Lý do hủy</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.map((appointment) => `
+                    <tr>
+                        <td><strong>#${escapeHtml(appointment.id)}</strong></td>
+                        <td>#${escapeHtml(appointment.service_id)}</td>
+                        <td>#${escapeHtml(appointment.timeslot_id)}</td>
+                        <td class="note-cell">${escapeHtml(appointment.note || "Không có")}</td>
+                        <td><span class="badge ${statusClass(appointment.status)}">${escapeHtml(statusLabel(appointment.status))}</span></td>
+                        <td class="note-cell">${escapeHtml(appointment.cancel_note || "Không có")}</td>
+                        <td>
+                            ${["pending", "confirmed"].includes(appointment.status) ? `
+                                <button class="mini-button mini-button-muted" data-my-appointment-action="cancel" data-id="${escapeHtml(appointment.id)}">Hủy lịch</button>
+                            ` : `<span class="badge badge-muted">Không có thao tác</span>`}
+                        </td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+    `;
 }
 
 function renderAppointmentTable(data, showActions) {
@@ -445,6 +552,7 @@ function renderAppointmentTable(data, showActions) {
                     <th>Khung giờ</th>
                     <th>Ghi chú</th>
                     <th>Trạng thái</th>
+                    <th>Lý do hủy</th>
                     ${showActions ? "<th>Thao tác</th>" : ""}
                 </tr>
             </thead>
@@ -457,12 +565,22 @@ function renderAppointmentTable(data, showActions) {
                         <td>#${escapeHtml(appointment.timeslot_id)}</td>
                         <td class="note-cell">${escapeHtml(appointment.note || "Không có")}</td>
                         <td><span class="badge ${statusClass(appointment.status)}">${escapeHtml(statusLabel(appointment.status))}</span></td>
+                        <td class="note-cell">${escapeHtml(appointment.cancel_note || "Không có")}</td>
                         ${showActions ? `
                             <td>
                                 <div class="row-actions">
-                                    <button class="mini-button" data-action="confirm" data-id="${appointment.id}">Xác nhận</button>
-                                    <button class="mini-button mini-button-muted" data-action="cancel" data-id="${appointment.id}">Hủy</button>
-                                    <button class="mini-button mini-button-success" data-action="complete" data-id="${appointment.id}">Hoàn thành</button>
+                                    ${appointment.status === "pending" ? `
+                                        <button class="mini-button" data-action="confirm" data-id="${appointment.id}">Xác nhận</button>
+                                    ` : ""}
+                                    ${["pending", "confirmed"].includes(appointment.status) ? `
+                                        <button class="mini-button mini-button-muted" data-action="cancel" data-id="${appointment.id}">Hủy</button>
+                                    ` : ""}
+                                    ${appointment.status === "confirmed" ? `
+                                        <button class="mini-button mini-button-success" data-action="complete" data-id="${appointment.id}">Hoàn thành</button>
+                                    ` : ""}
+                                    ${!["pending", "confirmed"].includes(appointment.status) ? `
+                                        <span class="badge badge-muted">Không có thao tác</span>
+                                    ` : ""}
                                 </div>
                             </td>
                         ` : ""}
@@ -508,10 +626,14 @@ async function loadServices() {
         message: "Bạn cần đăng nhập để xem nội dung này.",
         actionText: "Đi đến đăng nhập",
     })) {
+        finishPageLoading("services-loading");
         return;
     }
 
+    finishPageLoading("services-loading");
     showElement("services-content");
+    document.getElementById("admin-service-panel")?.classList.toggle("hidden", !isAdmin());
+    setLoading("services-result", "Đang tải danh mục tư vấn...");
 
     try {
         const response = await fetch(`${API_BASE}/services/`, {
@@ -534,6 +656,72 @@ async function loadServices() {
     }
 }
 
+function resetServiceForm() {
+    document.getElementById("service-id") && (document.getElementById("service-id").value = "");
+    document.getElementById("service-name") && (document.getElementById("service-name").value = "");
+    document.getElementById("service-description") && (document.getElementById("service-description").value = "");
+    document.getElementById("service-is-active") && (document.getElementById("service-is-active").value = "true");
+}
+
+async function submitServiceForm(event) {
+    event.preventDefault();
+    if (!requireRole(["admin"], { guardId: "services-guard", contentId: "services-content" })) {
+        return;
+    }
+
+    const serviceId = document.getElementById("service-id").value;
+    const payload = {
+        name: document.getElementById("service-name").value.trim(),
+        description: document.getElementById("service-description").value.trim() || null,
+        is_active: document.getElementById("service-is-active").value === "true",
+    };
+    if (!payload.name) {
+        setMessage("service-message", "Tên danh mục không được để trống.", true);
+        return;
+    }
+
+    const url = serviceId ? `${API_BASE}/services/${serviceId}` : `${API_BASE}/services/`;
+    const method = serviceId ? "PUT" : "POST";
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("service-message", getErrorMessage(data, "Lưu danh mục thất bại"), true);
+            return;
+        }
+        setMessage("service-message", "Lưu danh mục tư vấn thành công.");
+        resetServiceForm();
+        await loadServices();
+    } catch (error) {
+        setMessage("service-message", `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
+async function deleteService(serviceId) {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa hoặc ngưng hoạt động danh mục này không?")) {
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/services/${serviceId}`, {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("service-message", getErrorMessage(data, "Xóa danh mục thất bại"), true);
+            return;
+        }
+        setMessage("service-message", data.message || "Cập nhật danh mục thành công.");
+        await loadServices();
+    } catch (error) {
+        setMessage("service-message", `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
 async function loadTimeSlots() {
     if (!requireAuth({
         guardId: "timeslots-guard",
@@ -541,10 +729,14 @@ async function loadTimeSlots() {
         message: "Bạn cần đăng nhập để xem nội dung này.",
         actionText: "Đi đến đăng nhập",
     })) {
+        finishPageLoading("timeslots-loading");
         return;
     }
 
+    finishPageLoading("timeslots-loading");
     showElement("timeslots-content");
+    setupTimeslotManagePanel();
+    setLoading("timeslots-result", "Đang tải khung giờ tư vấn...");
 
     try {
         const response = await fetch(`${API_BASE}/timeslots/`, {
@@ -567,10 +759,103 @@ async function loadTimeSlots() {
     }
 }
 
+function setupTimeslotManagePanel() {
+    const panel = document.getElementById("timeslot-manage-panel");
+    const advisorInput = document.getElementById("timeslot-advisor-id");
+    const user = getCurrentUser();
+    if (!panel || !advisorInput || !user) {
+        return;
+    }
+
+    panel.classList.toggle("hidden", !isStaff());
+    if (user.role === "advisor") {
+        advisorInput.value = user.id;
+        advisorInput.readOnly = true;
+    } else {
+        advisorInput.readOnly = false;
+    }
+}
+
+function resetTimeslotForm() {
+    const user = getCurrentUser();
+    document.getElementById("timeslot-id") && (document.getElementById("timeslot-id").value = "");
+    document.getElementById("timeslot-date") && (document.getElementById("timeslot-date").value = "");
+    document.getElementById("timeslot-start") && (document.getElementById("timeslot-start").value = "");
+    document.getElementById("timeslot-end") && (document.getElementById("timeslot-end").value = "");
+    const advisorInput = document.getElementById("timeslot-advisor-id");
+    if (advisorInput) {
+        advisorInput.value = user?.role === "advisor" ? user.id : "";
+    }
+}
+
+async function submitTimeslotForm(event) {
+    event.preventDefault();
+    if (!requireRole(["advisor", "admin"], { guardId: "timeslots-guard", contentId: "timeslots-content" })) {
+        return;
+    }
+
+    const timeslotId = document.getElementById("timeslot-id").value;
+    const payload = {
+        slot_date: document.getElementById("timeslot-date").value,
+        start_time: document.getElementById("timeslot-start").value,
+        end_time: document.getElementById("timeslot-end").value,
+    };
+    if (!timeslotId) {
+        payload.advisor_id = Number(document.getElementById("timeslot-advisor-id").value);
+    }
+    if (!payload.slot_date || !payload.start_time || !payload.end_time || (!timeslotId && !payload.advisor_id)) {
+        setMessage("timeslot-message", "Vui lòng nhập đầy đủ thông tin khung giờ.", true);
+        return;
+    }
+
+    const url = timeslotId ? `${API_BASE}/timeslots/${timeslotId}` : `${API_BASE}/timeslots/`;
+    const method = timeslotId ? "PUT" : "POST";
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("timeslot-message", getErrorMessage(data, "Lưu khung giờ thất bại"), true);
+            return;
+        }
+        setMessage("timeslot-message", "Lưu khung giờ thành công.");
+        resetTimeslotForm();
+        await loadTimeSlots();
+    } catch (error) {
+        setMessage("timeslot-message", `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
+async function deleteTimeSlot(timeslotId) {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa khung giờ này không?")) {
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/timeslots/${timeslotId}`, {
+            method: "DELETE",
+            headers: getAuthHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("timeslot-message", getErrorMessage(data, "Xóa khung giờ thất bại"), true);
+            return;
+        }
+        setMessage("timeslot-message", data.message || "Xóa khung giờ thành công.");
+        await loadTimeSlots();
+    } catch (error) {
+        setMessage("timeslot-message", `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
 async function loadMyAppointments() {
     if (!requireRole(["student"], { guardId: "my-appointments-guard", contentId: "my-appointments-content" })) {
         return;
     }
+
+    setLoading("my-appointments-result", "Đang tải lịch hẹn của tôi...");
 
     try {
         const response = await fetch(`${API_BASE}/appointments/my`, {
@@ -600,6 +885,8 @@ async function loadBookingData(showSuccessMessage = false) {
         messageTarget.className = "message";
     }
 
+    setBookingFormLoading(true);
+
     try {
         const [servicesResponse, timeslotsResponse] = await Promise.all([
             fetch(`${API_BASE}/services/`, { headers: getAuthHeaders() }),
@@ -609,19 +896,23 @@ async function loadBookingData(showSuccessMessage = false) {
         const timeslots = await timeslotsResponse.json();
 
         if (!servicesResponse.ok) {
+            setBookingFormLoading(false);
             setMessage("booking-message", getErrorMessage(services, "Bạn cần đăng nhập trước"), true);
             return;
         }
         if (!timeslotsResponse.ok) {
+            setBookingFormLoading(false);
             setMessage("booking-message", getErrorMessage(timeslots, "Không tải được khung giờ tư vấn"), true);
             return;
         }
 
         renderSelectOptions(services, timeslots);
+        setBookingFormLoading(false);
         if (showSuccessMessage) {
             setMessage("booking-message", "Đã tải dữ liệu đặt lịch.");
         }
     } catch (error) {
+        setBookingFormLoading(false);
         setMessage("booking-message", `Lỗi kết nối: ${error.message}`, true);
     }
 }
@@ -680,10 +971,43 @@ async function createAppointment(event) {
     }
 }
 
+async function cancelAppointmentWithReason(appointmentId, messageTargetId, reloadCallback) {
+    const reason = window.prompt("Nhập lý do hủy lịch hẹn:");
+    if (reason === null) {
+        return;
+    }
+    const cancelNote = reason.trim();
+    if (!cancelNote) {
+        setMessage(messageTargetId, "Lý do hủy không được để trống.", true);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/appointments/${appointmentId}/cancel`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify({ cancel_note: cancelNote }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            setMessage(messageTargetId, getErrorMessage(data, "Hủy lịch thất bại"), true);
+            return;
+        }
+
+        setMessage(messageTargetId, "Hủy lịch thành công.");
+        await reloadCallback();
+    } catch (error) {
+        setMessage(messageTargetId, `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
 async function loadAdvisorAppointments() {
     if (!requireRole(["advisor", "admin"], { guardId: "advisor-appointments-guard", contentId: "advisor-appointments-content" })) {
         return;
     }
+
+    setLoading("advisor-appointments-result", "Đang tải danh sách lịch hẹn...");
 
     try {
         const response = await fetch(`${API_BASE}/appointments/`, {
@@ -711,9 +1035,17 @@ async function loadAdvisorAppointments() {
 }
 
 async function updateAppointmentStatus(appointmentId, action) {
+    if (action === "cancel") {
+        await cancelAppointmentWithReason(
+            appointmentId,
+            "advisor-appointments-message",
+            loadAdvisorAppointments
+        );
+        return;
+    }
+
     const endpoints = {
         confirm: "confirm",
-        cancel: "cancel",
         complete: "complete",
     };
     const endpoint = endpoints[action];
@@ -754,14 +1086,221 @@ function bindAdvisorActions() {
     });
 }
 
-async function initializePage() {
+function bindMyAppointmentActions() {
+    const target = document.getElementById("my-appointments-result");
+    if (!target) {
+        return;
+    }
+    target.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-my-appointment-action='cancel']");
+        if (!button) {
+            return;
+        }
+        cancelAppointmentWithReason(button.dataset.id, "my-appointments-message", loadMyAppointments);
+    });
+}
+
+function bindServiceActions() {
+    const target = document.getElementById("services-result");
+    if (!target) {
+        return;
+    }
+    target.addEventListener("click", (event) => {
+        const editButton = event.target.closest("[data-service-action='edit']");
+        const deleteButton = event.target.closest("[data-service-action='delete']");
+        if (editButton) {
+            const service = JSON.parse(editButton.dataset.service);
+            document.getElementById("service-id").value = service.id;
+            document.getElementById("service-name").value = service.name || "";
+            document.getElementById("service-description").value = service.description || "";
+            document.getElementById("service-is-active").value = service.is_active ? "true" : "false";
+        }
+        if (deleteButton) {
+            deleteService(deleteButton.dataset.id);
+        }
+    });
+}
+
+function bindTimeSlotActions() {
+    const target = document.getElementById("timeslots-result");
+    if (!target) {
+        return;
+    }
+    target.addEventListener("click", (event) => {
+        const editButton = event.target.closest("[data-timeslot-action='edit']");
+        const deleteButton = event.target.closest("[data-timeslot-action='delete']");
+        if (editButton) {
+            const timeslot = JSON.parse(editButton.dataset.timeslot);
+            document.getElementById("timeslot-id").value = timeslot.id;
+            document.getElementById("timeslot-advisor-id").value = timeslot.advisor_id;
+            document.getElementById("timeslot-date").value = timeslot.slot_date;
+            document.getElementById("timeslot-start").value = String(timeslot.start_time).slice(0, 5);
+            document.getElementById("timeslot-end").value = String(timeslot.end_time).slice(0, 5);
+            setMessage("timeslot-message", "Đang sửa khung giờ. Chỉ sửa được slot còn available.");
+        }
+        if (deleteButton) {
+            deleteTimeSlot(deleteButton.dataset.id);
+        }
+    });
+}
+
+async function loadAdminUsers() {
+    if (!requireRole(["admin"], { guardId: "admin-users-guard", contentId: "admin-users-content" })) {
+        finishPageLoading("admin-users-loading");
+        return;
+    }
+
+    finishPageLoading("admin-users-loading");
+    showElement("admin-users-content");
+    setLoading("admin-users-result", "Đang tải danh sách người dùng...");
+
+    try {
+        const response = await fetch(`${API_BASE}/users/`, { headers: getAuthHeaders() });
+        const data = await response.json();
+        if (!response.ok) {
+            setEmpty("admin-users-result", getErrorMessage(data, "Không tải được danh sách người dùng"));
+            return;
+        }
+        renderAdminUsers(data);
+    } catch (error) {
+        setEmpty("admin-users-result", `Lỗi kết nối: ${error.message}`);
+    }
+}
+
+function renderAdminUsers(data) {
+    const target = document.getElementById("admin-users-result");
+    if (!target) {
+        return;
+    }
+    if (!Array.isArray(data) || data.length === 0) {
+        setEmpty("admin-users-result", "Chưa có người dùng nào.");
+        return;
+    }
+
+    target.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Họ tên</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.map((user) => `
+                    <tr>
+                        <td><strong>#${escapeHtml(user.id)}</strong></td>
+                        <td>${escapeHtml(user.full_name)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>
+                            <select data-user-role="${escapeHtml(user.id)}">
+                                ${["student", "advisor", "admin"].map((role) => `
+                                    <option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>
+                                `).join("")}
+                            </select>
+                        </td>
+                        <td>
+                            <span class="badge ${user.is_active ? "badge-success" : "badge-danger"}">
+                                ${user.is_active ? "Đang hoạt động" : "Đã khóa"}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <button class="mini-button" data-user-action="role" data-id="${escapeHtml(user.id)}">Lưu role</button>
+                                <button class="mini-button mini-button-muted" data-user-action="status" data-id="${escapeHtml(user.id)}" data-active="${user.is_active}">
+                                    ${user.is_active ? "Khóa" : "Mở khóa"}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+    `;
+}
+
+async function updateUserRole(userId) {
+    const select = document.querySelector(`[data-user-role="${userId}"]`);
+    if (!select) {
+        return;
+    }
+    try {
+        const response = await fetch(`${API_BASE}/users/${userId}/role`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify({ role: select.value }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("admin-users-message", getErrorMessage(data, "Đổi role thất bại"), true);
+            return;
+        }
+        setMessage("admin-users-message", "Đổi role thành công.");
+        await loadAdminUsers();
+    } catch (error) {
+        setMessage("admin-users-message", `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
+async function updateUserStatus(userId, currentActive) {
+    try {
+        const response = await fetch(`${API_BASE}/users/${userId}/status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+            body: JSON.stringify({ is_active: !currentActive }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            setMessage("admin-users-message", getErrorMessage(data, "Cập nhật trạng thái thất bại"), true);
+            return;
+        }
+        setMessage("admin-users-message", "Cập nhật trạng thái tài khoản thành công.");
+        await loadAdminUsers();
+    } catch (error) {
+        setMessage("admin-users-message", `Lỗi kết nối: ${error.message}`, true);
+    }
+}
+
+function bindAdminUserActions() {
+    const target = document.getElementById("admin-users-result");
+    if (!target) {
+        return;
+    }
+    target.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-user-action]");
+        if (!button) {
+            return;
+        }
+        if (button.dataset.userAction === "role") {
+            updateUserRole(button.dataset.id);
+        }
+        if (button.dataset.userAction === "status") {
+            updateUserStatus(button.dataset.id, button.dataset.active === "true");
+        }
+    });
+}
+
+async function bootstrapAuthState() {
     runtimeUser = getStoredUser();
     if (getToken()) {
-        // Luôn kiểm tra lại token khi vào trang để tránh dùng user cũ trong localStorage.
-        await fetchCurrentUser();
+        try {
+            // Luôn kiểm tra lại token trước khi render nội dung theo quyền.
+            await fetchCurrentUser();
+        } catch {
+            clearToken();
+            clearStoredUser();
+        }
     }
     updateNavbar();
     updateTokenStatus();
+    document.body.classList.remove("app-booting");
+}
+
+async function initializePage() {
+    await bootstrapAuthState();
 
     const path = window.location.pathname;
     if (path === "/login" && isAuthenticated() && getCurrentRole()) {
@@ -770,20 +1309,29 @@ async function initializePage() {
     }
     if (path === "/dashboard") {
         if (requireAuth({ guardId: "dashboard-guard", contentId: "dashboard-content", redirect: true })) {
+            finishPageLoading("dashboard-loading");
             showElement("dashboard-content");
             await loadProfile();
+        } else {
+            finishPageLoading("dashboard-loading");
         }
     }
     if (path === "/booking-page") {
         if (requireRole(["student"], { guardId: "booking-guard", contentId: "booking-content" })) {
+            finishPageLoading("booking-loading");
             showElement("booking-content");
             await loadBookingData(false);
+        } else {
+            finishPageLoading("booking-loading");
         }
     }
     if (path === "/my-appointments-page") {
         if (requireRole(["student"], { guardId: "my-appointments-guard", contentId: "my-appointments-content" })) {
+            finishPageLoading("my-appointments-loading");
             showElement("my-appointments-content");
             await loadMyAppointments();
+        } else {
+            finishPageLoading("my-appointments-loading");
         }
     }
     if (path === "/timeslots-page") {
@@ -794,9 +1342,15 @@ async function initializePage() {
     }
     if (path === "/advisor-appointments-page") {
         if (requireRole(["advisor", "admin"], { guardId: "advisor-appointments-guard", contentId: "advisor-appointments-content" })) {
+            finishPageLoading("advisor-appointments-loading");
             showElement("advisor-appointments-content");
             await loadAdvisorAppointments();
+        } else {
+            finishPageLoading("advisor-appointments-loading");
         }
+    }
+    if (path === "/admin-users-page") {
+        await loadAdminUsers();
     }
 }
 
@@ -815,7 +1369,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("load-booking-data-btn")?.addEventListener("click", () => loadBookingData(true));
     document.getElementById("booking-form")?.addEventListener("submit", createAppointment);
     document.getElementById("load-advisor-appointments-btn")?.addEventListener("click", loadAdvisorAppointments);
+    document.getElementById("service-form")?.addEventListener("submit", submitServiceForm);
+    document.getElementById("reset-service-form-btn")?.addEventListener("click", resetServiceForm);
+    document.getElementById("timeslot-form")?.addEventListener("submit", submitTimeslotForm);
+    document.getElementById("reset-timeslot-form-btn")?.addEventListener("click", resetTimeslotForm);
+    document.getElementById("load-admin-users-btn")?.addEventListener("click", loadAdminUsers);
+    bindMyAppointmentActions();
+    bindServiceActions();
+    bindTimeSlotActions();
     bindAdvisorActions();
+    bindAdminUserActions();
 
     initializePage();
 });

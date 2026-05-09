@@ -4,10 +4,27 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.timeslot import TimeSlot
 from app.models.user import User
-from app.schemas.timeslot import TimeSlotCreate, TimeSlotRead
+from app.schemas.timeslot import TimeSlotCreate, TimeSlotRead, TimeSlotUpdate
 from app.routers.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/timeslots", tags=["TimeSlots"])
+
+
+def get_timeslot_or_404(db: Session, timeslot_id: int) -> TimeSlot:
+    """Lay timeslot theo id, khong co thi bao 404."""
+    timeslot = db.query(TimeSlot).filter(TimeSlot.id == timeslot_id).first()
+    if not timeslot:
+        raise HTTPException(status_code=404, detail="TimeSlot not found")
+    return timeslot
+
+
+def ensure_can_manage_timeslot(current_user: User, timeslot: TimeSlot):
+    """Kiem tra advisor/admin co quyen quan ly khung gio."""
+    if current_user.role == "admin":
+        return
+    if current_user.role == "advisor" and timeslot.advisor_id == current_user.id:
+        return
+    raise HTTPException(status_code=403, detail="You do not have permission to manage this timeslot")
 
 
 @router.post("/", response_model=TimeSlotRead)
@@ -45,3 +62,45 @@ def list_timeslots(
 ):
     """Danh sach khung gio (bat ky user da dang nhap)."""
     return db.query(TimeSlot).all()
+
+
+@router.put("/{timeslot_id}", response_model=TimeSlotRead)
+def update_timeslot(
+    timeslot_id: int,
+    payload: TimeSlotUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["advisor", "admin"])),
+):
+    """Advisor/admin sua khung gio khi slot con available."""
+    timeslot = get_timeslot_or_404(db, timeslot_id)
+    ensure_can_manage_timeslot(current_user, timeslot)
+
+    if timeslot.status != "available":
+        raise HTTPException(status_code=400, detail="Only available timeslots can be updated")
+    if payload.start_time >= payload.end_time:
+        raise HTTPException(status_code=400, detail="start_time must be before end_time")
+
+    timeslot.slot_date = payload.slot_date
+    timeslot.start_time = payload.start_time
+    timeslot.end_time = payload.end_time
+    db.commit()
+    db.refresh(timeslot)
+    return timeslot
+
+
+@router.delete("/{timeslot_id}")
+def delete_timeslot(
+    timeslot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["advisor", "admin"])),
+):
+    """Advisor/admin xoa khung gio khi slot con available."""
+    timeslot = get_timeslot_or_404(db, timeslot_id)
+    ensure_can_manage_timeslot(current_user, timeslot)
+
+    if timeslot.status != "available":
+        raise HTTPException(status_code=400, detail="Only available timeslots can be deleted")
+
+    db.delete(timeslot)
+    db.commit()
+    return {"message": "TimeSlot deleted successfully"}

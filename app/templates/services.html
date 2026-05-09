@@ -7,6 +7,10 @@
     <a class="button" href="/login">Đi đến đăng nhập</a>
 </section>
 
+<section id="services-loading" class="page-loading-card">
+    <div class="loading-box">Đang kiểm tra đăng nhập và tải danh mục tư vấn...</div>
+</section>
+
 <section id="services-content" class="hidden">
     <section class="page-title">
         <p class="eyebrow">Danh mục tư vấn</p>
@@ -15,6 +19,32 @@
     </section>
 
     <section class="panel">
+        <section id="admin-service-panel" class="management-panel hidden">
+            <h2>Quản lý danh mục tư vấn</h2>
+            <p>Chỉ admin có quyền thêm, sửa, ngưng hoạt động hoặc xóa danh mục tư vấn.</p>
+            <form id="service-form" class="form-card management-form">
+                <input id="service-id" type="hidden">
+
+                <label for="service-name">Tên danh mục</label>
+                <input id="service-name" type="text" placeholder="Ví dụ: Tư vấn học vụ" required>
+
+                <label for="service-description">Mô tả</label>
+                <textarea id="service-description" rows="3" placeholder="Nhập mô tả ngắn"></textarea>
+
+                <label for="service-is-active">Trạng thái</label>
+                <select id="service-is-active">
+                    <option value="true">Đang hoạt động</option>
+                    <option value="false">Ngưng hoạt động</option>
+                </select>
+
+                <div class="toolbar">
+                    <button class="button" type="submit">Lưu danh mục</button>
+                    <button id="reset-service-form-btn" class="button button-light" type="button">Làm mới form</button>
+                </div>
+            </form>
+            <div id="service-message" class="message" aria-live="polite"></div>
+        </section>
+
         <div class="toolbar">
             <button id="load-services-btn" class="button" type="button">Làm mới danh mục tư vấn</button>
         </div>

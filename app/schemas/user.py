@@ -21,3 +21,15 @@ class UserRead(BaseModel):
 
     # Cho phep doc du lieu tu ORM model
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserRoleUpdate(BaseModel):
+    """Payload admin dung de doi role user."""
+
+    role: str
+
+
+class UserStatusUpdate(BaseModel):
+    """Payload admin dung de khoa/mo tai khoan."""
+
+    is_active: bool

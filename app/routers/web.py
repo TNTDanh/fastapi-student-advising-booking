@@ -63,3 +63,9 @@ async def read_booking_page(request: Request):
 async def read_advisor_appointments_page(request: Request):
     """Trang quản lý lịch hẹn cho advisor/admin."""
     return render_page(request, "advisor_appointments.html", "Quản lý lịch hẹn")
+
+
+@router.get("/admin-users-page", response_class=HTMLResponse)
+async def read_admin_users_page(request: Request):
+    """Trang quản lý tài khoản người dùng cho admin."""
+    return render_page(request, "admin_users.html", "Quản lý người dùng")

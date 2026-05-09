@@ -9,10 +9,15 @@
 
 <section id="my-appointments-guard" class="guard-card hidden"></section>
 
+<section id="my-appointments-loading" class="page-loading-card">
+    <div class="loading-box">Đang kiểm tra tài khoản và tải lịch hẹn...</div>
+</section>
+
 <section id="my-appointments-content" class="panel hidden">
     <div class="toolbar">
         <button id="load-my-appointments-btn" class="button" type="button">Tải lại lịch hẹn</button>
     </div>
+    <div id="my-appointments-message" class="message" aria-live="polite"></div>
     <div id="my-appointments-result" class="table-wrap">
         <div class="empty-state">Đang tải lịch hẹn...</div>
     </div>

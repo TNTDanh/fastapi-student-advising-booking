@@ -12,6 +12,14 @@ class TimeSlotCreate(BaseModel):
     end_time: time
 
 
+class TimeSlotUpdate(BaseModel):
+    """Payload cap nhat khung gio tu van."""
+
+    slot_date: date
+    start_time: time
+    end_time: time
+
+
 class TimeSlotRead(BaseModel):
     """Schema output khung gio tu van."""
 

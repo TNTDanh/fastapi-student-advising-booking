@@ -7,7 +7,7 @@ from app.models.service import Service
 from app.models.timeslot import TimeSlot
 from app.models.user import User
 from app.routers.auth import get_current_user, require_roles
-from app.schemas.appointment import AppointmentCreate, AppointmentRead
+from app.schemas.appointment import AppointmentCancelRequest, AppointmentCreate, AppointmentRead
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -141,12 +141,16 @@ def confirm_appointment(
 @router.put("/{appointment_id}/cancel", response_model=AppointmentRead)
 def cancel_appointment(
     appointment_id: int,
+    payload: AppointmentCancelRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Cancel appointment theo quyen cua student/advisor/admin."""
+    """Cancel appointment va luu ly do huy theo quyen cua tung role."""
     appointment = get_appointment_or_404(db, appointment_id)
     timeslot = get_timeslot_or_404(db, appointment.timeslot_id)
+    cancel_note = payload.cancel_note.strip()
+    if not cancel_note:
+        raise HTTPException(status_code=400, detail="Cancel note is required")
 
     if current_user.role == "student":
         # Student chi duoc huy lich cua chinh minh
@@ -161,6 +165,8 @@ def cancel_appointment(
         raise HTTPException(status_code=400, detail="Only pending or confirmed appointments can be cancelled")
 
     appointment.status = "cancelled"
+    appointment.cancel_note = cancel_note
+    appointment.cancelled_by = current_user.role
     # Cancel se mo lai khung gio de nguoi khac co the dat
     timeslot.status = "available"
     db.commit()

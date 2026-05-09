@@ -20,3 +20,7 @@ class Appointment(Base):
     note = Column(Text, nullable=True)
     # Trang thai ban dau cua lich hen
     status = Column(String, nullable=False, default="pending")
+    # Luu ly do huy lich hen
+    cancel_note = Column(Text, nullable=True)
+    # Luu role da huy lich: student/advisor/admin
+    cancelled_by = Column(String, nullable=True)

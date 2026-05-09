@@ -1,5 +1,6 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.db.base import Base  # dang ky model
 from app.db.session import engine
@@ -11,7 +12,22 @@ app = FastAPI(title="Student Advising Booking System")
 # Tao bang tu dong cho giai doan hoc tap/phat trien (khong dung cho production)
 Base.metadata.create_all(bind=engine)
 
-# Phuc vu file tinh (CSS) de trang HTML hien thi dung
+
+def ensure_dev_schema_updates():
+    """Cap nhat nhe SQLite dev vi create_all khong them cot vao bang da ton tai."""
+    with engine.begin() as connection:
+        appointment_columns = {
+            row[1] for row in connection.execute(text("PRAGMA table_info(appointments)"))
+        }
+        if "cancel_note" not in appointment_columns:
+            connection.execute(text("ALTER TABLE appointments ADD COLUMN cancel_note TEXT"))
+        if "cancelled_by" not in appointment_columns:
+            connection.execute(text("ALTER TABLE appointments ADD COLUMN cancelled_by VARCHAR"))
+
+
+ensure_dev_schema_updates()
+
+# Phuc vu file tinh (CSS/JS) de trang HTML hien thi dung
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

@@ -7,6 +7,10 @@
     <a class="button" href="/login">Đi đến đăng nhập</a>
 </section>
 
+<section id="timeslots-loading" class="page-loading-card">
+    <div class="loading-box">Đang kiểm tra đăng nhập và tải khung giờ tư vấn...</div>
+</section>
+
 <section id="timeslots-content" class="hidden">
     <section class="page-title">
         <p class="eyebrow">Khung giờ tư vấn</p>
@@ -15,6 +19,32 @@
     </section>
 
     <section class="panel">
+        <section id="timeslot-manage-panel" class="management-panel hidden">
+            <h2>Quản lý khung giờ</h2>
+            <p>Advisor tạo/sửa/xóa khung giờ của mình. Admin có thể quản lý tất cả khung giờ.</p>
+            <form id="timeslot-form" class="form-card management-form">
+                <input id="timeslot-id" type="hidden">
+
+                <label for="timeslot-advisor-id">Mã cố vấn</label>
+                <input id="timeslot-advisor-id" type="number" min="1" required>
+
+                <label for="timeslot-date">Ngày tư vấn</label>
+                <input id="timeslot-date" type="date" required>
+
+                <label for="timeslot-start">Giờ bắt đầu</label>
+                <input id="timeslot-start" type="time" required>
+
+                <label for="timeslot-end">Giờ kết thúc</label>
+                <input id="timeslot-end" type="time" required>
+
+                <div class="toolbar">
+                    <button class="button" type="submit">Lưu khung giờ</button>
+                    <button id="reset-timeslot-form-btn" class="button button-light" type="button">Làm mới form</button>
+                </div>
+            </form>
+            <div id="timeslot-message" class="message" aria-live="polite"></div>
+        </section>
+
         <div class="toolbar">
             <button id="load-timeslots-btn" class="button" type="button">Làm mới khung giờ</button>
         </div>

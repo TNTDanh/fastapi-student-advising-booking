@@ -60,6 +60,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is locked",
+        )
     return user
 
 
@@ -102,6 +107,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user:
         raise HTTPException(status_code=401, detail="Email khong ton tai")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Tai khoan da bi khoa")
 
     # Kiem tra mat khau
     if not verify_password(form_data.password, user.password_hash):
