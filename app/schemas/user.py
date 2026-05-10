@@ -1,12 +1,13 @@
 ﻿from pydantic import BaseModel, ConfigDict
 
 
-class UserCreate(BaseModel):
-    """Schema input khi tao nguoi dung moi."""
+class UserTestCreate(BaseModel):
+    """Schema test DB nội bộ, không dùng để đăng ký tài khoản thật."""
 
     full_name: str
     email: str
-    password_hash: str  # Hien chi la du lieu test, sau se la mat khau hash that
+    # password_hash chỉ dùng cho route test, không nhập mật khẩu thô ở đây
+    password_hash: str
     role: str = "student"
 
 
@@ -21,12 +22,6 @@ class UserRead(BaseModel):
 
     # Cho phep doc du lieu tu ORM model
     model_config = ConfigDict(from_attributes=True)
-
-
-class UserRoleUpdate(BaseModel):
-    """Payload admin dung de doi role user."""
-
-    role: str
 
 
 class UserStatusUpdate(BaseModel):

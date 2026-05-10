@@ -36,34 +36,32 @@ def require_roles(allowed_roles: list[str]):
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """Lay user hien tai tu JWT, neu that bai tra 401."""
+    credential_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Không thể xác thực thông tin đăng nhập",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = decode_access_token(token)
         user_id = payload.get("sub")
         if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise credential_error
     except JWTError:
         # Token khong hop le / het han
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise credential_error
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    try:
+        user_id_int = int(user_id)
+    except (TypeError, ValueError):
+        raise credential_error
+
+    user = db.query(User).filter(User.id == user_id_int).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise credential_error
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is locked",
+            detail="Tài khoản đã bị khóa",
         )
     return user
 
@@ -73,7 +71,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     """Dang ky nguoi dung moi."""
     # Kiem tra email ton tai
     if db.query(User).filter(User.email == payload.email).first():
-        raise HTTPException(status_code=400, detail="Email da ton tai")
+        raise HTTPException(status_code=400, detail="Email đã tồn tại")
 
     # Hash password truoc khi luu DB
     hashed_pw = hash_password(payload.password)
@@ -106,13 +104,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # Swagger se gui username/password theo OAuth2PasswordRequestForm; dung username lam email
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Email khong ton tai")
+        raise HTTPException(status_code=401, detail="Email không tồn tại")
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Tai khoan da bi khoa")
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị khóa")
 
     # Kiem tra mat khau
     if not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Mat khau khong dung")
+        raise HTTPException(status_code=401, detail="Mật khẩu không đúng")
 
     # Tao JWT cho user
     token = create_access_token(

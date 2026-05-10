@@ -60,11 +60,40 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function getErrorMessage(data, fallback = "Có lỗi xảy ra") {
-  if (typeof data?.detail === "string") {
+async function parseApiResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      return await response.json();
+    } catch {
+      return { detail: "Máy chủ trả về dữ liệu không hợp lệ." };
+    }
+  }
+
+  // Một số lỗi 500 có thể trả text/html hoặc text/plain, không parse JSON trực tiếp.
+  const text = await response.text();
+  return { detail: text, nonJson: true };
+}
+
+function getErrorMessage(data, fallback = "Có lỗi xảy ra. Vui lòng thử lại.") {
+  if (typeof data?.detail === "string" && data.detail.trim()) {
     return data.detail;
   }
+  if (Array.isArray(data?.detail)) {
+    return "Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.";
+  }
   return fallback;
+}
+
+function getReadableErrorMessage(response, data, fallback = "Có lỗi xảy ra. Vui lòng thử lại.") {
+  if (response?.status >= 500) {
+    return "Máy chủ đang gặp lỗi. Vui lòng thử lại.";
+  }
+  if (data?.nonJson) {
+    return fallback;
+  }
+  return getErrorMessage(data, fallback);
 }
 
 function setMessage(targetId, text, isError = false) {
@@ -399,12 +428,16 @@ async function login(event) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: formData,
     });
-    const data = await response.json();
+    const data = await parseApiResponse(response);
 
     if (!response.ok) {
       setMessage(
         "login-message",
-        getErrorMessage(data, "Đăng nhập thất bại"),
+        getReadableErrorMessage(
+          response,
+          data,
+          "Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.",
+        ),
         true,
       );
       return;
@@ -424,7 +457,7 @@ async function login(event) {
     setMessage("login-message", "Đăng nhập thành công. Đang chuyển trang...");
     setTimeout(redirectByRole, 600);
   } catch (error) {
-    setMessage("login-message", `Lỗi kết nối: ${error.message}`, true);
+    setMessage("login-message", "Không thể kết nối đến máy chủ.", true);
   }
 }
 
@@ -1116,7 +1149,7 @@ async function prepareTimeslotAdvisorSelect(selectedAdvisorId = "") {
     advisorSelect.innerHTML = `<option value="">Đang tải danh sách cố vấn...</option>`;
     if (advisorNote) {
       advisorNote.textContent =
-        "Admin chọn một cố vấn đang hoạt động để tạo khung giờ.";
+        "**Admin chọn một cố vấn đang hoạt động để tạo khung giờ.**";
     }
 
     try {
@@ -1662,11 +1695,15 @@ async function loadAdminUsers() {
     const response = await fetch(`${API_BASE}/users/`, {
       headers: getAuthHeaders(),
     });
-    const data = await response.json();
+    const data = await parseApiResponse(response);
     if (!response.ok) {
       setEmpty(
         "admin-users-result",
-        getErrorMessage(data, "Không tải được danh sách người dùng"),
+        getReadableErrorMessage(
+          response,
+          data,
+          "Không tải được danh sách người dùng",
+        ),
       );
       return;
     }
@@ -1675,6 +1712,28 @@ async function loadAdminUsers() {
   } catch (error) {
     setEmpty("admin-users-result", `Lỗi kết nối: ${error.message}`);
   }
+}
+
+function getUserStatusButtonState(user, activeAdminCount) {
+  const currentUser = getCurrentUser();
+  const isSelf = Number(user.id) === Number(currentUser?.id);
+  const isLastActiveAdmin =
+    user.role === "admin" && user.is_active && activeAdminCount <= 1;
+
+  // UI hỗ trợ tránh bấm nhầm, backend vẫn là nơi chặn chắc chắn.
+  if (isSelf && user.is_active) {
+    return {
+      disabled: true,
+      title: "Bạn không thể tự khóa tài khoản của chính mình.",
+    };
+  }
+  if (isLastActiveAdmin) {
+    return {
+      disabled: true,
+      title: "Không thể khóa tài khoản admin đang hoạt động cuối cùng.",
+    };
+  }
+  return { disabled: false, title: "" };
 }
 
 function renderAdminUsers(data) {
@@ -1687,6 +1746,10 @@ function renderAdminUsers(data) {
     return;
   }
 
+  const activeAdminCount = originalUsers.filter(
+    (user) => user.role === "admin" && user.is_active,
+  ).length;
+
   target.innerHTML = `
         <table class="data-table">
             <thead>
@@ -1694,29 +1757,25 @@ function renderAdminUsers(data) {
                     <th>Mã</th>
                     <th>Họ tên</th>
                     <th>Email</th>
-                    <th>Role</th>
+                    <th>Vai trò</th>
                     <th>Trạng thái</th>
                     <th>Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 ${data
-                  .map(
-                    (user) => `
+                  .map((user) => {
+                    const statusButton = getUserStatusButtonState(
+                      user,
+                      activeAdminCount,
+                    );
+                    return `
                     <tr>
                         <td><strong>#${escapeHtml(user.id)}</strong></td>
                         <td>${escapeHtml(user.full_name)}</td>
                         <td>${escapeHtml(user.email)}</td>
                         <td>
-                            <select data-user-role="${escapeHtml(user.id)}">
-                                ${["student", "advisor", "admin"]
-                                  .map(
-                                    (role) => `
-                                    <option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>
-                                `,
-                                  )
-                                  .join("")}
-                            </select>
+                            <span class="badge badge-info">${escapeHtml(user.role)}</span>
                         </td>
                         <td>
                             <span class="badge ${user.is_active ? "badge-success" : "badge-danger"}">
@@ -1725,15 +1784,14 @@ function renderAdminUsers(data) {
                         </td>
                         <td>
                             <div class="row-actions">
-                                <button class="mini-button" data-user-action="role" data-id="${escapeHtml(user.id)}">Lưu role</button>
-                                <button class="mini-button mini-button-muted" data-user-action="status" data-id="${escapeHtml(user.id)}" data-active="${user.is_active}">
+                                <button class="mini-button mini-button-muted" data-user-action="status" data-id="${escapeHtml(user.id)}" data-active="${user.is_active}" ${statusButton.disabled ? "disabled" : ""} title="${escapeHtml(statusButton.title)}">
                                     ${user.is_active ? "Khóa" : "Mở khóa"}
                                 </button>
                             </div>
                         </td>
                     </tr>
-                `,
-                  )
+                `;
+                  })
                   .join("")}
             </tbody>
         </table>
@@ -1787,56 +1845,44 @@ function resetUserFilters() {
   renderAdminUsers(originalUsers);
 }
 
-async function updateUserRole(userId) {
-  const select = document.querySelector(`[data-user-role="${userId}"]`);
-  if (!select) {
+async function updateUserStatus(userId, currentActive) {
+  const nextActive = !currentActive;
+  const confirmMessage = currentActive
+    ? "Bạn có chắc chắn muốn khóa tài khoản này không?"
+    : "Bạn có chắc chắn muốn mở khóa tài khoản này không?";
+
+  if (!window.confirm(confirmMessage)) {
     return;
   }
-  try {
-    const response = await fetch(`${API_BASE}/users/${userId}/role`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ role: select.value }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setMessage(
-        "admin-users-message",
-        getErrorMessage(data, "Đổi role thất bại"),
-        true,
-      );
-      return;
-    }
-    setMessage("admin-users-message", "Đổi role thành công.");
-    await loadAdminUsers();
-  } catch (error) {
-    setMessage("admin-users-message", `Lỗi kết nối: ${error.message}`, true);
-  }
-}
 
-async function updateUserStatus(userId, currentActive) {
   try {
     const response = await fetch(`${API_BASE}/users/${userId}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ is_active: !currentActive }),
+      body: JSON.stringify({ is_active: nextActive }),
     });
-    const data = await response.json();
+    const data = await parseApiResponse(response);
     if (!response.ok) {
       setMessage(
         "admin-users-message",
-        getErrorMessage(data, "Cập nhật trạng thái thất bại"),
+        getReadableErrorMessage(
+          response,
+          data,
+          "Không thể cập nhật trạng thái tài khoản.",
+        ),
         true,
       );
       return;
     }
     setMessage(
       "admin-users-message",
-      "Cập nhật trạng thái tài khoản thành công.",
+      currentActive
+        ? "Đã khóa tài khoản thành công."
+        : "Đã mở khóa tài khoản thành công.",
     );
     await loadAdminUsers();
   } catch (error) {
-    setMessage("admin-users-message", `Lỗi kết nối: ${error.message}`, true);
+    setMessage("admin-users-message", "Không thể kết nối đến máy chủ.", true);
   }
 }
 
@@ -1849,9 +1895,6 @@ function bindAdminUserActions() {
     const button = event.target.closest("[data-user-action]");
     if (!button) {
       return;
-    }
-    if (button.dataset.userAction === "role") {
-      updateUserRole(button.dataset.id);
     }
     if (button.dataset.userAction === "status") {
       updateUserStatus(button.dataset.id, button.dataset.active === "true");

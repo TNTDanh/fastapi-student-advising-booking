@@ -4,7 +4,7 @@
 <section class="page-title">
     <p class="eyebrow">Quản trị</p>
     <h1>Quản lý người dùng</h1>
-    <p>Admin có thể xem danh sách, đổi role và khóa/mở tài khoản người dùng.</p>
+    <p>Admin có thể xem danh sách, lọc người dùng và khóa/mở tài khoản. Vai trò được cố định khi tạo tài khoản.</p>
 </section>
 
 <section id="admin-users-guard" class="guard-card hidden"></section>
@@ -42,6 +42,8 @@
     <div class="toolbar">
         <button id="load-admin-users-btn" class="button" type="button">Tải lại người dùng</button>
     </div>
+    <hr>
+    <p class="form-note">**Lưu ý: admin không thể tự khóa tài khoản của mình và hệ thống phải luôn còn ít nhất một admin đang hoạt động.**</p>
     <div id="admin-users-message" class="message" aria-live="polite"></div>
     <div id="admin-users-result" class="table-wrap">
         <div class="empty-state">Đang tải danh sách người dùng...</div>
