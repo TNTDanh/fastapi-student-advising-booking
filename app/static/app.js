@@ -1276,7 +1276,7 @@ async function submitTimeslotForm(event) {
       return;
     }
     closeModal("timeslot-modal");
-    setMessage("timeslot-page-message", "Lưu khung giờ thành công.");
+    setMessage("timeslot-page-message", "Khung giờ của cố vấn này đã được lưu.");
     resetTimeslotForm();
     await loadTimeSlots();
   } catch (error) {

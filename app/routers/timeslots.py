@@ -1,4 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
+from datetime import date, time
+
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -8,6 +10,8 @@ from app.schemas.timeslot import TimeSlotCreate, TimeSlotDisplayRead, TimeSlotRe
 from app.routers.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/timeslots", tags=["TimeSlots"])
+
+OVERLAP_ERROR_DETAIL = "Khung giờ này bị trùng với một khung giờ tư vấn đã tồn tại của cố vấn."
 
 
 def get_timeslot_or_404(db: Session, timeslot_id: int) -> TimeSlot:
@@ -25,6 +29,30 @@ def ensure_can_manage_timeslot(current_user: User, timeslot: TimeSlot):
     if current_user.role == "advisor" and timeslot.advisor_id == current_user.id:
         return
     raise HTTPException(status_code=403, detail="You do not have permission to manage this timeslot")
+
+
+def check_timeslot_overlap(
+    db: Session,
+    advisor_id: int,
+    slot_date: date,
+    start_time: time,
+    end_time: time,
+    exclude_timeslot_id: int | None = None,
+) -> None:
+    """Kiem tra khung gio co chong lan voi slot cu cua cung advisor trong ngay khong."""
+    # Hai khoang thoi gian overlap khi: new_start < old_end AND new_end > old_start.
+    # Neu chi cham bien nhau, vi du 08:00-09:00 va 09:00-10:00, thi khong bi tinh la trung.
+    query = db.query(TimeSlot).filter(
+        TimeSlot.advisor_id == advisor_id,
+        TimeSlot.slot_date == slot_date,
+        TimeSlot.start_time < end_time,
+        TimeSlot.end_time > start_time,
+    )
+    if exclude_timeslot_id is not None:
+        query = query.filter(TimeSlot.id != exclude_timeslot_id)
+
+    if query.first():
+        raise HTTPException(status_code=400, detail=OVERLAP_ERROR_DETAIL)
 
 
 def user_display_name(user: User | None, fallback_id: int) -> str:
@@ -48,6 +76,14 @@ def create_timeslot(
     # start_time phai < end_time
     if payload.start_time >= payload.end_time:
         raise HTTPException(status_code=400, detail="start_time must be before end_time")
+
+    check_timeslot_overlap(
+        db=db,
+        advisor_id=payload.advisor_id,
+        slot_date=payload.slot_date,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
+    )
 
     timeslot = TimeSlot(
         advisor_id=payload.advisor_id,
@@ -103,6 +139,15 @@ def update_timeslot(
     if payload.start_time >= payload.end_time:
         raise HTTPException(status_code=400, detail="start_time must be before end_time")
 
+    check_timeslot_overlap(
+        db=db,
+        advisor_id=timeslot.advisor_id,
+        slot_date=payload.slot_date,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
+        exclude_timeslot_id=timeslot.id,
+    )
+
     timeslot.slot_date = payload.slot_date
     timeslot.start_time = payload.start_time
     timeslot.end_time = payload.end_time
@@ -126,4 +171,4 @@ def delete_timeslot(
 
     db.delete(timeslot)
     db.commit()
-    return {"message": "TimeSlot deleted successfully"}
+    return {"message": "Khung giờ của cố vấn này đã được xóa."}

@@ -72,8 +72,6 @@ advisor
 admin
 ```
 
-Lưu ý: không dùng `/users/` để tạo tài khoản đăng nhập thật. Luồng đúng để đăng ký là `/auth/register` vì mật khẩu sẽ được hash trước khi lưu.
-
 ## Các trang giao diện chính
 
 | Đường dẫn | Mục đích |
