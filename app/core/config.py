@@ -1,3 +1,3 @@
-"""C?u h?nh ?ng d?ng s? ???c b? sung sau (v? d?: ??c .env)."""
+"""Cau hinh ung dung se duoc bo sung sau (vi du: doc .env)."""
 
-# TODO: Tri?n khai sau
+# TODO: Trien khai sau

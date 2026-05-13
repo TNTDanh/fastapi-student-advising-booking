@@ -1,1 +1,1 @@
-"""T?ng service s? ch?a business logic trong c?c b??c ti?p theo."""
+"""Tung service se chua business logic trong cac buoc tiep theo."""

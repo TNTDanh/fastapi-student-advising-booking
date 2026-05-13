@@ -9,7 +9,7 @@ from app.routers import appointments, auth, services, timeslots, users, web
 # Khoi tao ung dung FastAPI co ban
 app = FastAPI(title="Student Advising Booking System")
 
-# Tao bang tu dong cho giai doan hoc tap/phat trien (khong dung cho production)
+# Tao bang tu dong cho giai doan hoc tap/phat trien
 Base.metadata.create_all(bind=engine)
 
 

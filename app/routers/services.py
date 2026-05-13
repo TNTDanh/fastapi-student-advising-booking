@@ -28,7 +28,7 @@ def create_service(
     """Tao service moi (chi admin)."""
     # Kiem tra trung ten
     if db.query(Service).filter(Service.name == payload.name).first():
-        raise HTTPException(status_code=400, detail="Service name already exists")
+        raise HTTPException(status_code=400, detail="Tên dịch vụ đã tồn tại.")
 
     service = Service(
         name=payload.name,
@@ -74,7 +74,7 @@ def update_service(
         .first()
     )
     if duplicate:
-        raise HTTPException(status_code=400, detail="Service name already exists")
+        raise HTTPException(status_code=400, detail="Tên dịch vụ đã tồn tại.")
 
     service.name = payload.name
     service.description = payload.description
@@ -96,8 +96,8 @@ def delete_service(
     if used:
         service.is_active = False
         db.commit()
-        return {"message": "Service has been deactivated because it is already used"}
+        return {"message": "Dịch vụ đang được sử dụng không thể xóa."}
 
     db.delete(service)
     db.commit()
-    return {"message": "Service deleted successfully"}
+    return {"message": "Đã xóa dịch vụ thành công."}

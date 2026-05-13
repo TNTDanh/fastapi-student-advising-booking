@@ -18,7 +18,7 @@ def get_timeslot_or_404(db: Session, timeslot_id: int) -> TimeSlot:
     """Lay timeslot theo id, khong co thi bao 404."""
     timeslot = db.query(TimeSlot).filter(TimeSlot.id == timeslot_id).first()
     if not timeslot:
-        raise HTTPException(status_code=404, detail="TimeSlot not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy khung giờ.")
     return timeslot
 
 
@@ -28,7 +28,7 @@ def ensure_can_manage_timeslot(current_user: User, timeslot: TimeSlot):
         return
     if current_user.role == "advisor" and timeslot.advisor_id == current_user.id:
         return
-    raise HTTPException(status_code=403, detail="You do not have permission to manage this timeslot")
+    raise HTTPException(status_code=403, detail="Bạn không có quyền quản lý khung giờ này.")
 
 
 def check_timeslot_overlap(
@@ -41,7 +41,7 @@ def check_timeslot_overlap(
 ) -> None:
     """Kiem tra khung gio co chong lan voi slot cu cua cung advisor trong ngay khong."""
     # Hai khoang thoi gian overlap khi: new_start < old_end AND new_end > old_start.
-    # Neu chi cham bien nhau, vi du 08:00-09:00 va 09:00-10:00, thi khong bi tinh la trung.
+    # Duoc cham bien nhau, vi du 08:00-09:00 va 09:00-10:00, thi khong bi tinh la trung.
     query = db.query(TimeSlot).filter(
         TimeSlot.advisor_id == advisor_id,
         TimeSlot.slot_date == slot_date,
@@ -71,11 +71,11 @@ def create_timeslot(
     """Tao khung gio tu van (advisor chi tao cho chinh minh, admin tao cho bat ky ai)."""
     # Advisor khong duoc tao slot cho advisor khac
     if current_user.role == "advisor" and payload.advisor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Advisor cannot create timeslot for another advisor")
+        raise HTTPException(status_code=403, detail="Cố vấn không thể tạo khung giờ cho cố vấn khác.")
 
     # start_time phai < end_time
     if payload.start_time >= payload.end_time:
-        raise HTTPException(status_code=400, detail="start_time must be before end_time")
+        raise HTTPException(status_code=400, detail="Thời gian bắt đầu phải trước thời gian kết thúc.")
 
     check_timeslot_overlap(
         db=db,
@@ -135,9 +135,9 @@ def update_timeslot(
     ensure_can_manage_timeslot(current_user, timeslot)
 
     if timeslot.status != "available":
-        raise HTTPException(status_code=400, detail="Only available timeslots can be updated")
+        raise HTTPException(status_code=400, detail="Chỉ có thể cập nhật các khung giờ còn trống.")
     if payload.start_time >= payload.end_time:
-        raise HTTPException(status_code=400, detail="start_time must be before end_time")
+        raise HTTPException(status_code=400, detail="Thời gian bắt đầu phải trước thời gian kết thúc.")
 
     check_timeslot_overlap(
         db=db,
@@ -167,7 +167,7 @@ def delete_timeslot(
     ensure_can_manage_timeslot(current_user, timeslot)
 
     if timeslot.status != "available":
-        raise HTTPException(status_code=400, detail="Only available timeslots can be deleted")
+        raise HTTPException(status_code=400, detail="Chỉ những khung giờ còn trống mới có thể bị xóa.")
 
     db.delete(timeslot)
     db.commit()

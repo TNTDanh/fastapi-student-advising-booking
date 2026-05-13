@@ -133,7 +133,7 @@ def create_appointment(
         status="pending",
     )
 
-    # Round 1: booked de khoa timeslot, sau nay co the mo rong workflow
+    # Round 1: booked de khoa timeslot 
     timeslot.status = "booked"
     db.add(appointment)
     db.commit()
@@ -183,6 +183,8 @@ def list_my_appointments(
     return build_appointment_display(db, appointments)
 
 
+.
+
 @router.put("/{appointment_id}/confirm", response_model=AppointmentRead)
 def confirm_appointment(
     appointment_id: int,
@@ -195,7 +197,7 @@ def confirm_appointment(
     ensure_advisor_or_admin_can_manage(current_user, timeslot)
 
     if appointment.status != "pending":
-        raise HTTPException(status_code=400, detail="Only pending appointments can be confirmed")
+        raise HTTPException(status_code=400, detail="Chỉ những cuộc hẹn đang chờ xử lý mới có thể được xác nhận.")
 
     appointment.status = "confirmed"
     db.commit()
